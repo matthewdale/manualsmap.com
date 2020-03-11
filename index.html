@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script src="https://cdn.apple-mapkit.com/mk/5.x.x/mapkit.js"></script>
+
+    <style>
+        #map {
+            height: 600px;
+        }
+
+        a:link,
+        a:visited {
+            color: #2aaef5;
+            outline: none;
+            text-decoration: none;
+        }
+
+        .landmark {
+            width: 250px;
+            padding: 7px 0 0 0;
+            background: rgba(247, 247, 247, 0.75);
+            border-radius: 5px;
+            box-shadow: 10px 10px 50px rgba(0, 0, 0, 0.29);
+            font-family: Helvetica, Arial, sans-serif;
+            -webkit-transform-origin: 0 10px;
+            transform-origin: 0 10px;
+        }
+
+        .landmark h1 {
+            margin-top: 0;
+            padding: 5px 15px;
+            background: #2aaef5;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 16px;
+            font-weight: 300;
+        }
+
+        .landmark section {
+            padding: 0 15px 5px;
+            font-size: 14px;
+        }
+
+        .landmark section p {
+            margin: 5px 0;
+        }
+
+        .landmark:after {
+            content: "";
+            position: absolute;
+            top: 7px;
+            left: -13px;
+            width: 0;
+            height: 0;
+            margin-bottom: -13px;
+            border-right: 13px solid #2aaef5;
+            border-top: 13px solid rgba(0, 0, 0, 0);
+            border-bottom: 13px solid rgba(0, 0, 0, 0);
+        }
+
+        @-webkit-keyframes scale-and-fadein {
+            0% {
+                -webkit-transform: scale(0.2);
+                opacity: 0;
+            }
+
+            100% {
+                -webkit-transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes scale-and-fadein {
+            0% {
+                transform: scale(0.2);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+    </style>
+
+</head>
+
+<body>
+    <div id="map"></div>
+
+    <script>
+        mapkit.init({
+            authorizationCallback: function (done) {
+                $.get("/token", function(data) {
+                    done(data.token);
+                });
+            }
+        });
+
+        // Landmarks data
+        var manualLocations = [
+            { coordinate: new mapkit.Coordinate(47.6249008, -122.3469808), title: "2006 Audi A4 2.0T", phone: "NP12108", url: "" },
+            { coordinate: new mapkit.Coordinate(47.6248985, -122.346979), title: "1989 Toyota Supra", phone: "BPW3515", url: "" },
+            { coordinate: new mapkit.Coordinate(47.6286267, -122.3439477), title: "2006 Subaru Outback", phone: "417-YWR", url: "" },
+            { coordinate: new mapkit.Coordinate(47.6285353, -122.3441541), title: "2005 Honda Civic LX", phone: "ARN6500", url: "" },
+            { coordinate: new mapkit.Coordinate(47.6279952, -122.3453595), title: "1991 Suzuki Cappucino", phone: "BKU2709", url: "" },
+            { coordinate: new mapkit.Coordinate(47.6286892, -122.3438791), title: "2019 Ford Fiesta ST", phone: "BSE4329", url: "" },
+            { coordinate: new mapkit.Coordinate(47.6035104, -122.1317393), title: "2012 Honda Civic Si", phone: "BMX7109", url: "" },
+        ];
+
+        // Landmark annotation callout delegate
+        var CALLOUT_OFFSET = new DOMPoint(-148, -78);
+        var landmarkAnnotationCallout = {
+            calloutElementForAnnotation: function (annotation) {
+                return calloutForLandmarkAnnotation(annotation);
+            },
+
+            calloutAnchorOffsetForAnnotation: function (annotation, element) {
+                return CALLOUT_OFFSET;
+            },
+
+            calloutAppearanceAnimationForAnnotation: function (annotation) {
+                return "scale-and-fadein .4s 0 1 normal cubic-bezier(0.4, 0, 0, 1.5)";
+            }
+        };
+
+        // Landmarks annotations
+        var annotations = manualLocations.map(function (landmark) {
+            var annotation = new mapkit.MarkerAnnotation(landmark.coordinate, {
+                callout: landmarkAnnotationCallout,
+                color: "#c969e0"
+            });
+            annotation.landmark = landmark;
+            return annotation;
+        });
+
+        var map = new mapkit.Map("map");
+        map.showItems(annotations);
+
+        // Landmark annotation custom callout
+        function calloutForLandmarkAnnotation(annotation) {
+            var div = document.createElement("div");
+            div.className = "landmark";
+
+            var title = div.appendChild(document.createElement("h1"));
+            title.textContent = annotation.landmark.title;
+
+            var section = div.appendChild(document.createElement("section"));
+
+            var phone = section.appendChild(document.createElement("p"));
+            phone.className = "phone";
+            phone.textContent = annotation.landmark.phone;
+
+            var link = section.appendChild(document.createElement("p"));
+            link.className = "homepage";
+            var a = link.appendChild(document.createElement("a"));
+            a.href = annotation.landmark.url;
+            a.textContent = "website";
+
+            return div;
+        }
+    </script>
+</body>
+
+</html>
