@@ -90,79 +90,11 @@
 
 <body>
     <div id="map"></div>
-
-    <script>
-        mapkit.init({
-            authorizationCallback: function (done) {
-                $.get("/token", function(data) {
-                    done(data.token);
-                });
-            }
-        });
-
-        // Landmarks data
-        var manualLocations = [
-            { coordinate: new mapkit.Coordinate(47.6249008, -122.3469808), title: "2006 Audi A4 2.0T", phone: "NP12108", url: "" },
-            { coordinate: new mapkit.Coordinate(47.6248985, -122.346979), title: "1989 Toyota Supra", phone: "BPW3515", url: "" },
-            { coordinate: new mapkit.Coordinate(47.6286267, -122.3439477), title: "2006 Subaru Outback", phone: "417-YWR", url: "" },
-            { coordinate: new mapkit.Coordinate(47.6285353, -122.3441541), title: "2005 Honda Civic LX", phone: "ARN6500", url: "" },
-            { coordinate: new mapkit.Coordinate(47.6279952, -122.3453595), title: "1991 Suzuki Cappucino", phone: "BKU2709", url: "" },
-            { coordinate: new mapkit.Coordinate(47.6286892, -122.3438791), title: "2019 Ford Fiesta ST", phone: "BSE4329", url: "" },
-            { coordinate: new mapkit.Coordinate(47.6035104, -122.1317393), title: "2012 Honda Civic Si", phone: "BMX7109", url: "" },
-        ];
-
-        // Landmark annotation callout delegate
-        var CALLOUT_OFFSET = new DOMPoint(-148, -78);
-        var landmarkAnnotationCallout = {
-            calloutElementForAnnotation: function (annotation) {
-                return calloutForLandmarkAnnotation(annotation);
-            },
-
-            calloutAnchorOffsetForAnnotation: function (annotation, element) {
-                return CALLOUT_OFFSET;
-            },
-
-            calloutAppearanceAnimationForAnnotation: function (annotation) {
-                return "scale-and-fadein .4s 0 1 normal cubic-bezier(0.4, 0, 0, 1.5)";
-            }
-        };
-
-        // Landmarks annotations
-        var annotations = manualLocations.map(function (landmark) {
-            var annotation = new mapkit.MarkerAnnotation(landmark.coordinate, {
-                callout: landmarkAnnotationCallout,
-                color: "#c969e0"
-            });
-            annotation.landmark = landmark;
-            return annotation;
-        });
-
-        var map = new mapkit.Map("map");
-        map.showItems(annotations);
-
-        // Landmark annotation custom callout
-        function calloutForLandmarkAnnotation(annotation) {
-            var div = document.createElement("div");
-            div.className = "landmark";
-
-            var title = div.appendChild(document.createElement("h1"));
-            title.textContent = annotation.landmark.title;
-
-            var section = div.appendChild(document.createElement("section"));
-
-            var phone = section.appendChild(document.createElement("p"));
-            phone.className = "phone";
-            phone.textContent = annotation.landmark.phone;
-
-            var link = section.appendChild(document.createElement("p"));
-            link.className = "homepage";
-            var a = link.appendChild(document.createElement("a"));
-            a.href = annotation.landmark.url;
-            a.textContent = "website";
-
-            return div;
-        }
-    </script>
+    <form id="search" onsubmit="submitSearch();return false">
+        <input id="query" type="text" value="Search here"><br>
+        <input type="submit" value="Submit">
+    </form>
+    <script src="/app.js"></script>
 </body>
 
 </html>

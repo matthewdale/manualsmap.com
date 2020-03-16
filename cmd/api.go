@@ -105,6 +105,7 @@ func makeTokenEndpoint(svc apiService) endpoint.Endpoint {
 }
 
 type car struct {
+	ID        string  `json:"id,omitempty"`
 	Year      int     `json:"year,omitempty"`
 	Brand     string  `json:"brand,omitempty"`
 	Model     string  `json:"model,omitempty"`
@@ -127,6 +128,7 @@ func (res carsResponse) StatusCode() int {
 func (apiService) Cars() ([]car, error) {
 	return []car{
 		{
+			ID:        "NP12108",
 			Year:      2006,
 			Brand:     "Audi",
 			Model:     "A4",
@@ -136,6 +138,7 @@ func (apiService) Cars() ([]car, error) {
 			Latitude:  -122.3469808,
 		},
 		{
+			ID:        "BPW3515",
 			Year:      1989,
 			Brand:     "Toyota",
 			Model:     "Supra",
@@ -144,6 +147,7 @@ func (apiService) Cars() ([]car, error) {
 			Latitude:  -122.346979,
 		},
 		{
+			ID:        "417-YWR",
 			Year:      2006,
 			Brand:     "Subaru",
 			Model:     "Outback",
@@ -152,6 +156,7 @@ func (apiService) Cars() ([]car, error) {
 			Latitude:  -122.3439477,
 		},
 		{
+			ID:        "ARN6500",
 			Year:      2005,
 			Brand:     "Honda",
 			Model:     "Civic",
@@ -161,6 +166,7 @@ func (apiService) Cars() ([]car, error) {
 			Latitude:  -122.3441541,
 		},
 		{
+			ID:        "BKU2709",
 			Year:      1991,
 			Brand:     "Suzuki",
 			Model:     "Cappucino",
@@ -169,6 +175,7 @@ func (apiService) Cars() ([]car, error) {
 			Latitude:  -122.3453595,
 		},
 		{
+			ID:        "BSE4329",
 			Year:      2019,
 			Brand:     "Ford",
 			Model:     "Fiesta",
@@ -178,6 +185,7 @@ func (apiService) Cars() ([]car, error) {
 			Latitude:  -122.3438791,
 		},
 		{
+			ID:        "BMX7109",
 			Year:      2012,
 			Brand:     "Honda",
 			Model:     "Civic",
