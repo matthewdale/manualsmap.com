@@ -21,7 +21,7 @@ const keyID = ""
 const origin = ""
 
 func main() {
-	http.Handle("/", http.FileServer(http.Dir(".")))
+	http.Handle("/", http.FileServer(http.Dir("public")))
 
 	svc := apiService{}
 	tokenHandler := httptransport.NewServer(
@@ -134,8 +134,8 @@ func (apiService) Cars() ([]car, error) {
 			Model:     "A4",
 			Trim:      "2.0T",
 			Color:     "black",
-			Longitude: 47.6249008,
-			Latitude:  -122.3469808,
+			Latitude:  47.6249008,
+			Longitude: -122.3469808,
 		},
 		{
 			ID:        "BPW3515",
@@ -143,8 +143,8 @@ func (apiService) Cars() ([]car, error) {
 			Brand:     "Toyota",
 			Model:     "Supra",
 			Color:     "white",
-			Longitude: 47.6248985,
-			Latitude:  -122.346979,
+			Latitude:  47.6248985,
+			Longitude: -122.346979,
 		},
 		{
 			ID:        "417-YWR",
@@ -152,8 +152,8 @@ func (apiService) Cars() ([]car, error) {
 			Brand:     "Subaru",
 			Model:     "Outback",
 			Color:     "gunmetal",
-			Longitude: 47.6286267,
-			Latitude:  -122.3439477,
+			Latitude:  47.6286267,
+			Longitude: -122.3439477,
 		},
 		{
 			ID:        "ARN6500",
@@ -162,8 +162,8 @@ func (apiService) Cars() ([]car, error) {
 			Model:     "Civic",
 			Trim:      "LX",
 			Color:     "white",
-			Longitude: 47.6285353,
-			Latitude:  -122.3441541,
+			Latitude:  47.6285353,
+			Longitude: -122.3441541,
 		},
 		{
 			ID:        "BKU2709",
@@ -171,8 +171,8 @@ func (apiService) Cars() ([]car, error) {
 			Brand:     "Suzuki",
 			Model:     "Cappucino",
 			Color:     "black",
-			Longitude: 47.6279952,
-			Latitude:  -122.3453595,
+			Latitude:  47.6279952,
+			Longitude: -122.3453595,
 		},
 		{
 			ID:        "BSE4329",
@@ -181,8 +181,8 @@ func (apiService) Cars() ([]car, error) {
 			Model:     "Fiesta",
 			Trim:      "ST",
 			Color:     "orange",
-			Longitude: 47.6286892,
-			Latitude:  -122.3438791,
+			Latitude:  47.6286892,
+			Longitude: -122.3438791,
 		},
 		{
 			ID:        "BMX7109",
@@ -191,8 +191,8 @@ func (apiService) Cars() ([]car, error) {
 			Model:     "Civic",
 			Trim:      "Si",
 			Color:     "black",
-			Longitude: 47.6035104,
-			Latitude:  -122.1317393,
+			Latitude:  47.6035104,
+			Longitude: -122.1317393,
 		},
 	}, nil
 }

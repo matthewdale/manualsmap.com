@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script src="https://cdn.apple-mapkit.com/mk/5.x.x/mapkit.js"></script>
+
+    <link rel="stylesheet" href="/canvi.css">
+    <style>
+        html,
+        body,
+        main {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            font-family: -apple-system, Roboto, "Helvetica Neue", sans-serif;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        #openmenu {
+            position: absolute;
+            background-color: white;
+            top: 1em;
+            left: 1em;
+            padding: 0.5em;
+            border-radius: 0.5em;
+            line-height: 1.5em;
+        }
+
+        #search {
+            position: absolute;
+            background-color: white;
+            top: 4em;
+            left: 1em;
+            padding: 0.5em;
+            border-radius: 0.5em;
+            line-height: 1.5em;
+        }
+
+        #addcar {
+            position: absolute;
+            background-color: white;
+            top: 10em;
+            left: 1em;
+            padding: 0.5em;
+            border-radius: 0.5em;
+            line-height: 1.5em;
+        }
+
+        #cars {
+            position: absolute;
+            background-color: white;
+            bottom: 1em;
+            left: 1em;
+            padding: 0.5em;
+            border-radius: 0.5em;
+            line-height: 1.5em;
+        }
+
+        a:link,
+        a:visited {
+            color: #2aaef5;
+            outline: none;
+            text-decoration: none;
+        }
+
+        .landmark {
+            width: 250px;
+            padding: 7px 0 0 0;
+            background: rgba(247, 247, 247, 0.75);
+            border-radius: 5px;
+            box-shadow: 10px 10px 50px rgba(0, 0, 0, 0.29);
+            font-family: Helvetica, Arial, sans-serif;
+            -webkit-transform-origin: 0 10px;
+            transform-origin: 0 10px;
+        }
+
+        .landmark h1 {
+            margin-top: 0;
+            padding: 5px 15px;
+            background: #2aaef5;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 16px;
+            font-weight: 300;
+        }
+
+        .landmark section {
+            padding: 0 15px 5px;
+            font-size: 14px;
+        }
+
+        .landmark section p {
+            margin: 5px 0;
+        }
+
+        .landmark:after {
+            content: "";
+            position: absolute;
+            top: 7px;
+            left: -13px;
+            width: 0;
+            height: 0;
+            margin-bottom: -13px;
+            border-right: 13px solid #2aaef5;
+            border-top: 13px solid rgba(0, 0, 0, 0);
+            border-bottom: 13px solid rgba(0, 0, 0, 0);
+        }
+
+        @-webkit-keyframes scale-and-fadein {
+            0% {
+                -webkit-transform: scale(0.2);
+                opacity: 0;
+            }
+
+            100% {
+                -webkit-transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes scale-and-fadein {
+            0% {
+                transform: scale(0.2);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+    </style>
+
+</head>
+
+<body>
+    <aside class="canvi-navbar">
+        <ul class="canvi-navigation">
+            <li>
+                <a href="https://pineco.de/category/laravel/" target="_blank" class="canvi-navigation__item"
+                    tabindex="-1">
+                    <span class="canvi-navigation__text">Laravel</span>
+                </a>
+            </li>
+
+            <li>
+                <a href="https://pineco.de/category/css/" target="_blank" class="canvi-navigation__item" tabindex="-1">
+                    <span class="canvi-navigation__text">CSS</span>
+                </a>
+            </li>
+
+            <li>
+                <a href="https://pineco.de/category/html/" target="_blank" class="canvi-navigation__item" tabindex="-1">
+                    <span class="canvi-navigation__text">HTML</span>
+                </a>
+            </li>
+
+            <li>
+                <a href="https://pineco.de/category/javascript/" target="_blank" class="canvi-navigation__item"
+                    tabindex="-1">
+                    <span class="canvi-navigation__text">JavaScript</span>
+                </a>
+            </li>
+
+            <li>
+                <a href="https://pineco.de/category/vue-js/" target="_blank" class="canvi-navigation__item"
+                    tabindex="-1">
+                    <span class="canvi-navigation__text">Vue.js</span>
+                </a>
+            </li>
+        </ul>
+    </aside>
+    <main class="canvi-content">
+        <div id="map"></div>
+        <div id="openmenu">Menu</div>
+        <div id="search">
+            Search
+            <form onsubmit="submitSearch();return false">
+                <input id="searchQuery" type="text" placeholder="Search here"><br>
+                <input type="submit" value="Submit">
+            </form>
+        </div>
+        <!-- <div id="addcar">
+            Add new manual car
+            <form>
+                <input name="licensePlate" type="text" placeholder="License plate"><br>
+                <input name="year" type="text" placeholder="Year"><br>
+                <input name="brand" type="text" placeholder="Brand"><br>
+                <input name="model" type="text" placeholder="Model"><br>
+                <input name="trim" type="text" placeholder="Trim"><br>
+                <input name="color" type="text" placeholder="Color"><br>
+                <input name="longitude" type="text" placeholder="Longitude"><br>
+                <input name="latitude" type="text" placeholder="latitude"><br>
+                <input type="submit" value="Submit">
+            </form>
+        </div> -->
+        <div id="cars">
+            Cars
+            <div id="carsInfo"></div>
+        </div>
+    </main>
+
+    <script src="/canvi.js"></script>
+    <script>
+        // Initialize the Canvi menu system.
+        var canvi = new Canvi({
+            navbar: ".canvi-navbar",
+            content: ".canvi-content",
+            openButton: "#openmenu",
+            pushContent: false,
+        });
+    </script>
+
+    <script src="/app.js"></script>
+</body>
+
+</html>
