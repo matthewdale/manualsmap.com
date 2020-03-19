@@ -148,46 +148,47 @@ function search(query) {
     });
 }
 
-// map.addEventListener("select", function (event) {
-//     console.log("select");
-// });
-// map.addEventListener("deselect", function (event) {
-//     console.log("deselect");
-// });
-// map.addEventListener("drag-start", function (event) {
-//     console.log("drag-start");
-// });
-// map.addEventListener("dragging", function (event) {
-//     console.log("dragging");
-// });
+var newCarAnnotation = null;
+function addCar() {
+    if (newCarAnnotation) {
+        map.removeAnnotation(newCarAnnotation);
+    }
+    var form = $("#addcarform").clone();
+    form.on('submit', function() {
+        // TODO: Form validation.
+        // TODO: Submit data.
+        console.log($(this));
+        map.removeAnnotation(newCarAnnotation);
+
+        newCarAnnotation = null;
+        return false;
+    })
+    var callout = {
+        calloutElementForAnnotation: function (annotation) {
+            var div = document.createElement("div");
+            div.className = "landmark";
+
+            div.appendChild(form.get(0));
+
+            return div;
+        },
+        calloutAnchorOffsetForAnnotation: function (annotation, element) {
+            return CALLOUT_OFFSET;
+        },
+        calloutAppearanceAnimationForAnnotation: function (annotation) {
+            return "scale-and-fadein .4s 0 1 normal cubic-bezier(0.4, 0, 0, 1.5)";
+        },
+    };
+    newCarAnnotation = new mapkit.MarkerAnnotation(map.center, {
+        draggable: true,
+        title: "Click and hold to drag",
+        callout: callout,
+    });
+    map.addAnnotation(newCarAnnotation);
+}
+
 map.addEventListener("drag-end", function (event) {
     console.log("drag-end");
-    var geocoder = new mapkit.Geocoder({
-        language: "en-GB",
-    });
-    console.log(event.annotation);
-    geocoder.reverseLookup(event.annotation.coordinate, function (error, data) {
-        if (error) {
-            // Handle reverse lookup error.
-            return;
-        }
-        var addresses = data.results.map(place => place.formattedAddress);
-        console.log(addresses);
-    });
+    console.log(event.annotation.coordinate);
+    // TODO: Highlight target overlay.
 });
-// map.addEventListener("user-location-change", function (event) {
-//     console.log("user-location-change");
-// });
-// map.addEventListener("user-location-error", function (event) {
-//     console.log("user-location-error");
-// });
-
-// map.element.addEventListener("click", function (event) {
-//     if (event.target.parentNode !== map.element) {
-//         // This condition prevents clicks on controls. Binding to a 
-//         // secondary click is another option to prevent conflict
-//         return;
-//     }
-//     console.log("click on map");
-//     console.log(event);
-// });

@@ -151,26 +151,22 @@
                     <span class="canvi-navigation__text">Laravel</span>
                 </a>
             </li>
-
             <li>
                 <a href="https://pineco.de/category/css/" target="_blank" class="canvi-navigation__item" tabindex="-1">
                     <span class="canvi-navigation__text">CSS</span>
                 </a>
             </li>
-
             <li>
                 <a href="https://pineco.de/category/html/" target="_blank" class="canvi-navigation__item" tabindex="-1">
                     <span class="canvi-navigation__text">HTML</span>
                 </a>
             </li>
-
             <li>
                 <a href="https://pineco.de/category/javascript/" target="_blank" class="canvi-navigation__item"
                     tabindex="-1">
                     <span class="canvi-navigation__text">JavaScript</span>
                 </a>
             </li>
-
             <li>
                 <a href="https://pineco.de/category/vue-js/" target="_blank" class="canvi-navigation__item"
                     tabindex="-1">
@@ -179,6 +175,7 @@
             </li>
         </ul>
     </aside>
+
     <main class="canvi-content">
         <div id="map"></div>
         <div id="openmenu">Menu</div>
@@ -189,25 +186,31 @@
                 <input type="submit" value="Submit">
             </form>
         </div>
-        <!-- <div id="addcar">
-            Add new manual car
-            <form>
-                <input name="licensePlate" type="text" placeholder="License plate"><br>
-                <input name="year" type="text" placeholder="Year"><br>
-                <input name="brand" type="text" placeholder="Brand"><br>
-                <input name="model" type="text" placeholder="Model"><br>
-                <input name="trim" type="text" placeholder="Trim"><br>
-                <input name="color" type="text" placeholder="Color"><br>
-                <input name="longitude" type="text" placeholder="Longitude"><br>
-                <input name="latitude" type="text" placeholder="latitude"><br>
-                <input type="submit" value="Submit">
+
+        <div id="addcar">
+            <form onsubmit="addCar();return false">
+                <input type="submit" value="Add Car">
             </form>
-        </div> -->
+        </div>
+
         <div id="cars">
             Cars
             <div id="carsInfo"></div>
         </div>
     </main>
+
+    <div style="display: none;">
+        <form id="addcarform">
+            Add new manual car here
+            <input name="licensePlate" type="text" placeholder="License plate"><br>
+            <input name="year" type="text" placeholder="Year"><br>
+            <input name="brand" type="text" placeholder="Brand"><br>
+            <input name="model" type="text" placeholder="Model"><br>
+            <input name="trim" type="text" placeholder="Trim"><br>
+            <input name="color" type="text" placeholder="Color"><br>
+            <input type="submit" value="Submit">
+        </form>
+    </div>
 
     <script src="/canvi.js"></script>
     <script>
