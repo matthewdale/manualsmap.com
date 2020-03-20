@@ -46,7 +46,6 @@ function search(query) {
     });
 }
 
-
 //////// Add Car ////////
 var CALLOUT_OFFSET = new DOMPoint(-148, -78);
 var newCarAnnotation = null;
@@ -55,10 +54,40 @@ function addCar() {
         map.removeAnnotation(newCarAnnotation);
     }
     let form = $("#addCarForm").clone();
-    form.on('submit', function () {
+    form.on("submit", function (event) {
         // TODO: Form validation.
         // TODO: Submit data.
-        console.log($(this));
+        let form = event.target;
+        let data = {
+            car: {
+                year: Number(form["year"].value),
+                brand: form["brand"].value,
+                model: form["model"].value,
+                trim: form["trim"].value,
+                color: form["color"].value,
+            },
+            licenseState: form["licenseState"].value,
+            licensePlate: form["licensePlate"].value,
+            latitude: newCarAnnotation.coordinate.latitude,
+            longitude: newCarAnnotation.coordinate.longitude,
+        };
+        console.log(data);
+        console.log(JSON.stringify(data));
+        let options = {
+            method: "POST",
+            body: JSON.stringify(data),
+            headers: {
+                "Content-Type": "application/json",
+            },
+        };
+        fetch("/cars", options)
+            .then(res => res.json())
+            .then(result => {
+                console.log(result)
+                // TODO: What about on failure?
+                fetchVisibleOverlays();
+            });
+
         map.removeAnnotation(newCarAnnotation);
 
         newCarAnnotation = null;
@@ -177,11 +206,7 @@ function buildOverlays(mapBlocks) {
         return overlay;
     });
 }
-
-// The maximum longitude or latitude span to display overlays/
-const maxSpan = 0.6;
-var overlays = [];
-map.addEventListener("region-change-end", function (event) {
+function fetchVisibleOverlays() {
     // If we're going to fetch too many blocks, skip it.
     if (map.region.span.latitudeDelta >= maxSpan || map.region.span.longitudeDelta >= maxSpan) {
         map.removeOverlays(overlays);
@@ -202,6 +227,13 @@ map.addEventListener("region-change-end", function (event) {
             overlays = buildOverlays(result.map_blocks);
             map.addOverlays(overlays);
         });
+}
+
+// The maximum longitude or latitude span to display overlays/
+const maxSpan = 0.6;
+var overlays = [];
+map.addEventListener("region-change-end", function (event) {
+    fetchVisibleOverlays();
 });
 
 canvi.open();

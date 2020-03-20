@@ -19,9 +19,9 @@ type Car struct {
 	Year     int    `json:"year"`
 	Brand    string `json:"brand"`
 	Model    string `json:"model"`
-	Trim     string `json:"trim,omitempty"`
-	Color    string `json:"color,omitempty"`
-	ImageURL string `json:"image_url,omitempty"`
+	Trim     string `json:"trim"`
+	Color    string `json:"color"`
+	ImageURL string `json:"image_url"`
 }
 
 const getCarsQuery = `
@@ -133,8 +133,8 @@ func GetCarsHandler(svc Service) http.Handler {
 
 type postCarsRequest struct {
 	Car          Car     `json:"car"`
-	LicenseState string  `json:"license_state"`
-	LicensePlate string  `json:"license_plate"`
+	LicenseState string  `json:"licenseState"`
+	LicensePlate string  `json:"licensePlate"`
 	Latitude     float64 `json:"latitude"`
 	Longitude    float64 `json:"longitude"`
 }
