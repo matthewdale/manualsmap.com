@@ -13,5 +13,6 @@ CREATE TABLE cars (
     model TEXT NOT NULL,
     trim TEXT NOT NULL,
     color TEXT NOT NULL,
-    image_url TEXT NOT NULL
+    image_url TEXT NOT NULL,
+    created timestamp NOT NULL DEFAULT NOW()
 );

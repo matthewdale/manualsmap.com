@@ -21,7 +21,7 @@ type Car struct {
 	Model    string `json:"model"`
 	Trim     string `json:"trim"`
 	Color    string `json:"color"`
-	ImageURL string `json:"image_url"`
+	ImageURL string `json:"imageUrl"`
 }
 
 const getCarsQuery = `
@@ -93,7 +93,7 @@ type getCarsRequest struct {
 }
 
 type getCarsResponse struct {
-	Cars       []Car  `json:"cars,omitempty"`
+	Cars       []Car  `json:"cars"`
 	Err        string `json:"err,omitempty"`
 	statusCode int
 }
@@ -162,6 +162,8 @@ func postCarsEndpoint(svc Service) endpoint.Endpoint {
 		if err != nil {
 			return nil, err
 		}
+		// TODO: Do these in a transaction so it can be rolled back in case there's a
+		// duplicate key constraint inserting the car.
 		if block == nil {
 			if err := svc.InsertMapBlock(r.Latitude, r.Longitude); err != nil {
 				return nil, err
@@ -173,6 +175,7 @@ func postCarsEndpoint(svc Service) endpoint.Endpoint {
 		}
 		err = svc.InsertCar(r.Car, hash, block.ID)
 		if err != nil {
+			// TODO: Handle duplicate key.
 			return nil, err
 		}
 		return postCarsResponse{LicenseHash: hash}, nil

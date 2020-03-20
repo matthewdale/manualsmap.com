@@ -32,7 +32,7 @@ function search(query) {
     let searcher = new mapkit.Search({ region: map.region });
     searcher.search(query, function (error, data) {
         if (error) {
-            // Handle search error
+            // TODO: Handle search error.
             return;
         }
         let annotations = data.places.map(function (place) {
@@ -42,6 +42,8 @@ function search(query) {
             annotation.color = "#9B6134";
             return annotation;
         });
+        // TODO: Remove other search result markers.
+        // TODO: Set maximum zoom on search.
         map.showItems(annotations);
     });
 }
@@ -56,7 +58,6 @@ function addCar() {
     let form = $("#addCarForm").clone();
     form.on("submit", function (event) {
         // TODO: Form validation.
-        // TODO: Submit data.
         let form = event.target;
         let data = {
             car: {
@@ -65,14 +66,13 @@ function addCar() {
                 model: form["model"].value,
                 trim: form["trim"].value,
                 color: form["color"].value,
+                imageUrl: form["imageUrl"].value,
             },
             licenseState: form["licenseState"].value,
             licensePlate: form["licensePlate"].value,
             latitude: newCarAnnotation.coordinate.latitude,
             longitude: newCarAnnotation.coordinate.longitude,
         };
-        console.log(data);
-        console.log(JSON.stringify(data));
         let options = {
             method: "POST",
             body: JSON.stringify(data),
@@ -133,8 +133,8 @@ function displayCars(cars) {
         div.find("#model").text(car.model);
         div.find("#trim").text(car.trim);
         div.find("#color").text(car.color);
-        div.find("#imageLink").prop("href", car.image_url);
-        div.find("#image").prop("src", car.image_url);
+        div.find("#imageLink").prop("href", car.imageUrl);
+        div.find("#image").prop("src", car.imageUrl);
 
         return div;
     });
@@ -187,14 +187,9 @@ function buildOverlays(mapBlocks) {
         });
         overlay.addEventListener("select", function (event) {
             // TODO: Highlight selected overlay.
-            if (event.target.data.cars) {
-                displayCars(event.target.data.cars);
-                return;
-            }
             fetch(`/mapblocks/${event.target.data.id}/cars`)
                 .then(response => response.json())
                 .then(result => {
-                    event.target.data.cars = result.cars;
                     displayCars(result.cars);
                 });
         });
