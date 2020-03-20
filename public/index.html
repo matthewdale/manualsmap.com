@@ -9,6 +9,8 @@
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
     <script src="https://cdn.apple-mapkit.com/mk/5.x.x/mapkit.js"></script>
 
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+        integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
     <link rel="stylesheet" href="/canvi.css">
     <style>
         html,
@@ -26,44 +28,18 @@
             width: 100%;
         }
 
-        #openmenu {
+        #openMenu {
             position: absolute;
             background-color: white;
-            top: 1em;
-            left: 1em;
+            top: 0.5em;
+            left: 0.5em;
             padding: 0.5em;
             border-radius: 0.5em;
             line-height: 1.5em;
         }
 
-        #search {
-            position: absolute;
-            background-color: white;
-            top: 4em;
-            left: 1em;
+        .canvi-navbar {
             padding: 0.5em;
-            border-radius: 0.5em;
-            line-height: 1.5em;
-        }
-
-        #addcar {
-            position: absolute;
-            background-color: white;
-            top: 10em;
-            left: 1em;
-            padding: 0.5em;
-            border-radius: 0.5em;
-            line-height: 1.5em;
-        }
-
-        #cars {
-            position: absolute;
-            background-color: white;
-            bottom: 1em;
-            left: 1em;
-            padding: 0.5em;
-            border-radius: 0.5em;
-            line-height: 1.5em;
         }
 
         a:link,
@@ -144,64 +120,39 @@
 
 <body>
     <aside class="canvi-navbar">
+        <button type="button" class="btn btn-default" onclick="canvi.close();">Close</button>
         <ul class="canvi-navigation">
             <li>
-                <a href="https://pineco.de/category/laravel/" target="_blank" class="canvi-navigation__item"
-                    tabindex="-1">
-                    <span class="canvi-navigation__text">Laravel</span>
-                </a>
+                <form onsubmit="submitSearch();return false">
+                    <div class="input-group">
+                        <input id="searchQuery" type="text" class="form-control" placeholder="Search Manuals Map">
+                        <span class="input-group-btn">
+                            <button type="submit" class="btn btn-default">Search</button>
+                        </span>
+                    </div>
+                </form>
             </li>
             <li>
-                <a href="https://pineco.de/category/css/" target="_blank" class="canvi-navigation__item" tabindex="-1">
-                    <span class="canvi-navigation__text">CSS</span>
-                </a>
+                <form onsubmit="addCar();return false">
+                    <button type="submit" class="btn btn-default">Add Car</button>
+                </form>
             </li>
             <li>
-                <a href="https://pineco.de/category/html/" target="_blank" class="canvi-navigation__item" tabindex="-1">
-                    <span class="canvi-navigation__text">HTML</span>
-                </a>
-            </li>
-            <li>
-                <a href="https://pineco.de/category/javascript/" target="_blank" class="canvi-navigation__item"
-                    tabindex="-1">
-                    <span class="canvi-navigation__text">JavaScript</span>
-                </a>
-            </li>
-            <li>
-                <a href="https://pineco.de/category/vue-js/" target="_blank" class="canvi-navigation__item"
-                    tabindex="-1">
-                    <span class="canvi-navigation__text">Vue.js</span>
-                </a>
+                Cars
+                <div id="carsInfo"></div>
             </li>
         </ul>
     </aside>
 
     <main class="canvi-content">
         <div id="map"></div>
-        <div id="openmenu">Menu</div>
-        <div id="search">
-            Search
-            <form onsubmit="submitSearch();return false">
-                <input id="searchQuery" type="text" placeholder="Search here"><br>
-                <input type="submit" value="Submit">
-            </form>
-        </div>
-
-        <div id="addcar">
-            <form onsubmit="addCar();return false">
-                <input type="submit" value="Add Car">
-            </form>
-        </div>
-
-        <div id="cars">
-            Cars
-            <div id="carsInfo"></div>
-        </div>
+        <button id="openMenu" type="button" class="btn btn-default" onclick="canvi.open();canvi._removeOverlay();">Menu</button>
     </main>
 
     <div style="display: none;">
-        <form id="addcarform">
+        <form id="addCarForm">
             Add new manual car here
+            <input name="licenseState" type="text" placeholder="License state"><br>
             <input name="licensePlate" type="text" placeholder="License plate"><br>
             <input name="year" type="text" placeholder="Year"><br>
             <input name="brand" type="text" placeholder="Brand"><br>
@@ -210,19 +161,23 @@
             <input name="color" type="text" placeholder="Color"><br>
             <input type="submit" value="Submit">
         </form>
+
+        <div id="carDisplay">
+            <div>
+                <span id="year"></span>
+                <span id="brand"></span>
+                <span id="model"></span>
+                <span id="trim"></span><br>
+                Color:
+                <span id="color"></span><br>
+                <a id="imageLink" href="" target="_blank">
+                    <img id="image" src="" style="width: 200px;" />
+                </a>
+            </div>
+        </div>
     </div>
 
     <script src="/canvi.js"></script>
-    <script>
-        // Initialize the Canvi menu system.
-        var canvi = new Canvi({
-            navbar: ".canvi-navbar",
-            content: ".canvi-content",
-            openButton: "#openmenu",
-            pushContent: false,
-        });
-    </script>
-
     <script src="/app.js"></script>
 </body>
 

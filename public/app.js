@@ -1,3 +1,12 @@
+"use strict";
+
+var canvi = new Canvi({
+    navbar: ".canvi-navbar",
+    content: ".canvi-content",
+    pushContent: false,
+    width: "18.5em",
+});
+
 mapkit.init({
     authorizationCallback: function (done) {
         fetch("/token")
@@ -8,12 +17,13 @@ mapkit.init({
     }
 });
 
-
 var map = new mapkit.Map("map", {
     tracksUserLocation: true,
     showsUserLocationControl: true,
 });
 
+
+//////// Search ////////
 function submitSearch() {
     search($("#searchQuery").val());
 }
@@ -36,12 +46,15 @@ function search(query) {
     });
 }
 
+
+//////// Add Car ////////
+var CALLOUT_OFFSET = new DOMPoint(-148, -78);
 var newCarAnnotation = null;
 function addCar() {
     if (newCarAnnotation) {
         map.removeAnnotation(newCarAnnotation);
     }
-    let form = $("#addcarform").clone();
+    let form = $("#addCarForm").clone();
     form.on('submit', function () {
         // TODO: Form validation.
         // TODO: Submit data.
@@ -81,13 +94,94 @@ map.addEventListener("drag-end", function (event) {
     // TODO: Highlight target overlay.
 });
 
+
+//////// Display Cars ////////
+function displayCars(cars) {
+    let elements = cars.map(car => {
+        let div = $("#carDisplay div").clone();
+        div.find("#year").text(car.year);
+        div.find("#brand").text(car.brand);
+        div.find("#model").text(car.model);
+        div.find("#trim").text(car.trim);
+        div.find("#color").text(car.color);
+        div.find("#imageLink").prop("href", car.image_url);
+        div.find("#image").prop("src", car.image_url);
+
+        return div;
+    });
+
+    $("#carsInfo").html("");
+    $("#carsInfo").append(elements);
+
+    // TODO: Necessary?
+    canvi.open();
+    canvi._removeOverlay();
+}
+
+// TODO: Necessary?
+function hideCars() {
+    $("#carsInfo").html("");
+    canvi.close();
+}
+
+
+//////// Display Map Blocks ////////
+var overlayStyle = new mapkit.Style({
+    strokeColor: "#F00",
+    strokeOpacity: .2,
+    lineWidth: 1,
+    lineJoin: "round",
+    lineDash: [2, 2, 6, 2, 6, 2]
+});
+function buildOverlays(mapBlocks) {
+    return mapBlocks.map(block => {
+        // Determine if the offset should be positive or negative so
+        // that the magnitude of the sum is always greater (i.e.
+        // farther away from zero. This works in conjunction with
+        // truncating the car longitude and latitude, which always
+        // rounds toward zero.
+        let latOffset = 0.00999 * Math.sign(block.latitude);
+        let longOffset = 0.00999 * Math.sign(block.longitude);
+        let overlay = new mapkit.PolygonOverlay([
+            new mapkit.Coordinate(block.latitude, block.longitude),
+            new mapkit.Coordinate(block.latitude, block.longitude + longOffset),
+            new mapkit.Coordinate(block.latitude + latOffset, block.longitude + longOffset),
+            new mapkit.Coordinate(block.latitude + latOffset, block.longitude),
+        ], {
+            style: overlayStyle,
+            visible: true,
+            enabled: true,
+            data: {
+                id: block.id,
+                cars: null,
+            },
+        });
+        overlay.addEventListener("select", function (event) {
+            // TODO: Highlight selected overlay.
+            if (event.target.data.cars) {
+                displayCars(event.target.data.cars);
+                return;
+            }
+            fetch(`/mapblocks/${event.target.data.id}/cars`)
+                .then(response => response.json())
+                .then(result => {
+                    event.target.data.cars = result.cars;
+                    displayCars(result.cars);
+                });
+        });
+        overlay.addEventListener("deselect", function (event) {
+            // Figure out how to cancel the previous request or
+            // prevent the info from being displayed.
+            // hideCars();
+        });
+        return overlay;
+    });
+}
+
 // The maximum longitude or latitude span to display overlays/
 const maxSpan = 0.6;
 var overlays = [];
 map.addEventListener("region-change-end", function (event) {
-    console.log("region-change-end");
-    console.log(map.region.toBoundingRegion());
-
     // If we're going to fetch too many blocks, skip it.
     if (map.region.span.latitudeDelta >= maxSpan || map.region.span.longitudeDelta >= maxSpan) {
         map.removeOverlays(overlays);
@@ -105,48 +199,10 @@ map.addEventListener("region-change-end", function (event) {
         .then(response => response.json())
         .then(result => {
             map.removeOverlays(overlays);
-
-            let style = new mapkit.Style({
-                strokeColor: "#F00",
-                strokeOpacity: .2,
-                lineWidth: 2,
-                lineJoin: "round",
-                lineDash: [2, 2, 6, 2, 6, 2]
-            });
-
-            overlays = result.map_blocks.map(block => {
-                // Determine if the offset should be positive or negative so
-                // that the magnitude of the sum is always greater (i.e.
-                // farther away from zero. This works in conjunction with
-                // truncating the car longitude and latitude, which always
-                // rounds toward zero.
-                let latOffset = 0.01 * Math.sign(block.latitude);
-                let longOffset = 0.01 * Math.sign(block.longitude);
-                let overlay = new mapkit.PolygonOverlay([
-                    new mapkit.Coordinate(block.latitude, block.longitude),
-                    new mapkit.Coordinate(block.latitude, block.longitude + longOffset),
-                    new mapkit.Coordinate(block.latitude + latOffset, block.longitude + longOffset),
-                    new mapkit.Coordinate(block.latitude + latOffset, block.longitude),
-                ], {
-                    style: style,
-                    visible: true,
-                    enabled: true,
-                    data: { id: block.id },
-                });
-                overlay.addEventListener("select", function (event) {
-                    fetch(`/mapblocks/${event.target.data.id}/cars`)
-                        .then(response => response.json())
-                        .then(result => {
-                            $("#carsInfo").text(JSON.stringify(result.cars));
-                        });
-                });
-                overlay.addEventListener("deselect", function (event) {
-                    // Figure out how to cancel the previous request or
-                    // prevent the info from being displayed.
-                    $("#carsInfo").text("");
-                });
-                return overlay;
-            });
+            overlays = buildOverlays(result.map_blocks);
             map.addOverlays(overlays);
         });
-})
+});
+
+canvi.open();
+canvi._removeOverlay();
