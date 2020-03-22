@@ -156,8 +156,10 @@ function hideCars() {
 
 //////// Display Map Blocks ////////
 var overlayStyle = new mapkit.Style({
-    strokeColor: "#F00",
-    strokeOpacity: .2,
+    fillColor: "#007bff",
+    fillOpacity: 0.3,
+    strokeColor: "#ff0000",
+    strokeOpacity: 0.5,
     lineWidth: 1,
     lineJoin: "round",
     lineDash: [2, 2, 6, 2, 6, 2]
@@ -225,7 +227,7 @@ function fetchVisibleOverlays() {
 }
 
 // The maximum longitude or latitude span to display overlays/
-const maxSpan = 0.6;
+const maxSpan = 0.7;
 var overlays = [];
 map.addEventListener("region-change-end", function (event) {
     fetchVisibleOverlays();
