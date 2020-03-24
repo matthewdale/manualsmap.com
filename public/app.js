@@ -48,14 +48,15 @@ function search(query) {
     });
 }
 
-function grecaptchaRender() {
-    grecaptcha.render("recaptcha",{
+
+//////// Add Car ////////
+function renderRecaptcha() {
+    grecaptcha.render("recaptcha", {
         "sitekey": "6Ld5i-MUAAAAAMAIZ1my_sonpYAECKc4UIdiIvhQ",
         "theme": "light",
     });
 }
 
-//////// Add Car ////////
 var CALLOUT_OFFSET = new DOMPoint(-148, -78);
 var newCarAnnotation = null;
 function addCar() {
@@ -68,7 +69,7 @@ function addCar() {
     let recaptcha = document.createElement("div");
     recaptcha.setAttribute("id", "recaptcha");
     let script = document.createElement("script");
-    script.appendChild(document.createTextNode("grecaptchaRender();"));
+    script.appendChild(document.createTextNode("renderRecaptcha();"));
 
     form.find("button").before(recaptcha);
     form.find("button").before(script);
@@ -132,12 +133,23 @@ function addCar() {
     map.addAnnotation(newCarAnnotation);
 }
 
-map.addEventListener("drag-end", function (event) {
-    console.log("drag-end");
-    console.log(event.annotation.coordinate);
-    // TODO: Highlight target overlay.
+var addCarOverlay = null;
+map.addEventListener("dragging", function (event) {
+    if (addCarOverlay) {
+        map.removeOverlay(addCarOverlay);
+    }
+    // TODO: Change color of add car overlay.
+    addCarOverlay = mapBlockOverlay(
+        truncate(event.coordinate.latitude, 2),
+        truncate(event.coordinate.longitude, 2));
+    map.addOverlay(addCarOverlay);
 });
 
+// Based on https://code-examples.net/en/q/3fe40a
+function truncate(number, digits) {
+    var re = new RegExp('^-?\\d+(?:\.\\d{0,' + (digits || -1) + '})?');
+    return Number(number.toString().match(re)[0]);
+};
 
 //////// Display Cars ////////
 function displayCars(cars) {
@@ -179,29 +191,30 @@ var overlayStyle = new mapkit.Style({
     lineJoin: "round",
     lineDash: [2, 2, 6, 2, 6, 2]
 });
+function mapBlockOverlay(latitude, longitude) {
+    // Determine if the offset should be positive or negative so
+    // that the magnitude of the sum is always greater (i.e.
+    // farther away from zero. This works in conjunction with
+    // truncating the car longitude and latitude, which always
+    // rounds toward zero.
+    let latOffset = 0.00999 * Math.sign(latitude);
+    let longOffset = 0.00999 * Math.sign(longitude);
+    return new mapkit.PolygonOverlay([
+        new mapkit.Coordinate(latitude, longitude),
+        new mapkit.Coordinate(latitude, longitude + longOffset),
+        new mapkit.Coordinate(latitude + latOffset, longitude + longOffset),
+        new mapkit.Coordinate(latitude + latOffset, longitude),
+    ], {
+        style: overlayStyle,
+        visible: true,
+        enabled: true,
+    });
+}
+
 function buildOverlays(mapBlocks) {
     return mapBlocks.map(block => {
-        // Determine if the offset should be positive or negative so
-        // that the magnitude of the sum is always greater (i.e.
-        // farther away from zero. This works in conjunction with
-        // truncating the car longitude and latitude, which always
-        // rounds toward zero.
-        let latOffset = 0.00999 * Math.sign(block.latitude);
-        let longOffset = 0.00999 * Math.sign(block.longitude);
-        let overlay = new mapkit.PolygonOverlay([
-            new mapkit.Coordinate(block.latitude, block.longitude),
-            new mapkit.Coordinate(block.latitude, block.longitude + longOffset),
-            new mapkit.Coordinate(block.latitude + latOffset, block.longitude + longOffset),
-            new mapkit.Coordinate(block.latitude + latOffset, block.longitude),
-        ], {
-            style: overlayStyle,
-            visible: true,
-            enabled: true,
-            data: {
-                id: block.id,
-                cars: null,
-            },
-        });
+        let overlay = mapBlockOverlay(block.latitude, block.longitude);
+        overlay.data = { id: block.id };
         overlay.addEventListener("select", function (event) {
             // TODO: Highlight selected overlay.
             fetch(`/mapblocks/${event.target.data.id}/cars`)
@@ -236,7 +249,7 @@ function fetchVisibleOverlays() {
         .then(response => response.json())
         .then(result => {
             map.removeOverlays(overlays);
-            overlays = buildOverlays(result.map_blocks);
+            overlays = buildOverlays(result.mapBlocks);
             map.addOverlays(overlays);
         });
 }

@@ -113,7 +113,7 @@ type getRequest struct {
 }
 
 type getResponse struct {
-	MapBlocks  []MapBlock `json:"map_blocks"`
+	MapBlocks  []MapBlock `json:"mapBlocks"`
 	Err        string     `json:"err,omitempty"`
 	statusCode int
 }
