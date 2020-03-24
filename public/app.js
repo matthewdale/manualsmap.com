@@ -48,6 +48,13 @@ function search(query) {
     });
 }
 
+function grecaptchaRender() {
+    grecaptcha.render("recaptcha",{
+        "sitekey": "6Ld5i-MUAAAAAMAIZ1my_sonpYAECKc4UIdiIvhQ",
+        "theme": "light",
+    });
+}
+
 //////// Add Car ////////
 var CALLOUT_OFFSET = new DOMPoint(-148, -78);
 var newCarAnnotation = null;
@@ -55,7 +62,16 @@ function addCar() {
     if (newCarAnnotation) {
         map.removeAnnotation(newCarAnnotation);
     }
-    let form = $("#addCarForm").clone();
+    let form = $("#addCarFormTemplate").clone();
+    form.prop("id", "addCarForm");
+
+    let recaptcha = document.createElement("div");
+    recaptcha.setAttribute("id", "recaptcha");
+    let script = document.createElement("script");
+    script.appendChild(document.createTextNode("grecaptchaRender();"));
+
+    form.find("button").before(recaptcha);
+    form.find("button").before(script);
     form.on("submit", function (event) {
         // TODO: Form validation.
         let form = event.target;
@@ -72,6 +88,7 @@ function addCar() {
             licensePlate: form["licensePlate"].value,
             latitude: newCarAnnotation.coordinate.latitude,
             longitude: newCarAnnotation.coordinate.longitude,
+            recaptcha: grecaptcha.getResponse(),
         };
         let options = {
             method: "POST",
@@ -96,8 +113,6 @@ function addCar() {
     let callout = {
         calloutElementForAnnotation: function (annotation) {
             let div = document.createElement("div");
-            div.className = "landmark";
-
             div.appendChild(form.get(0));
 
             return div;

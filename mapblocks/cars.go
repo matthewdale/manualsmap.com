@@ -3,10 +3,12 @@ package mapblocks
 import (
 	"context"
 	"encoding/json"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/dpapathanasiou/go-recaptcha"
 	"github.com/go-kit/kit/endpoint"
 	httptransport "github.com/go-kit/kit/transport/http"
 	"github.com/gorilla/mux"
@@ -137,6 +139,8 @@ type postCarsRequest struct {
 	LicensePlate string  `json:"licensePlate"`
 	Latitude     float64 `json:"latitude"`
 	Longitude    float64 `json:"longitude"`
+	Recaptcha    string  `json:"recaptcha"`
+	remoteIP     string
 }
 
 type postCarsResponse struct {
@@ -154,7 +158,17 @@ func postCarsEndpoint(svc Service) endpoint.Endpoint {
 		// TODO: Replace with errors that implement json.Marshaler and
 		// httptransport.StatusCoder
 		r := request.(postCarsRequest)
-		hash, err := licenseHash(r.LicensePlate, r.LicenseState)
+
+		// reCAPTCHA form validation.
+		valid, err := recaptcha.Confirm(r.remoteIP, r.Recaptcha)
+		if err != nil {
+			return nil, errors.WithMessage(err, "reCAPTCHA server error")
+		}
+		if !valid {
+			return nil, errors.New("reCAPTCHA validation failed")
+		}
+
+		hash, err := licenseHash(r.LicenseState, r.LicensePlate)
 		if err != nil {
 			return nil, err
 		}
@@ -182,17 +196,24 @@ func postCarsEndpoint(svc Service) endpoint.Endpoint {
 	}
 }
 
+func postCarsDecode(_ context.Context, r *http.Request) (interface{}, error) {
+	var req postCarsRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return nil, errors.WithMessage(err, "invalid POST body")
+	}
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return nil, errors.WithMessage(err, "failed to get remote IP")
+	}
+	req.remoteIP = ip
+	return req, nil
+}
+
 func PostCarsHandler(svc Service) http.Handler {
 	return httptransport.NewServer(
 		postCarsEndpoint(svc),
-		func(_ context.Context, r *http.Request) (interface{}, error) {
-			var req postCarsRequest
-			err := json.NewDecoder(r.Body).Decode(&req)
-			if err != nil {
-				return nil, errors.WithMessage(err, "invalid POST body")
-			}
-			return req, nil
-		},
+		postCarsDecode,
 		encoders.JSONResponseEncoder,
 	)
 }

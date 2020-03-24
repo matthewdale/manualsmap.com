@@ -137,15 +137,17 @@ func getEndpoint(svc Service) endpoint.Endpoint {
 	}
 }
 
+func getDecode(_ context.Context, r *http.Request) (interface{}, error) {
+	var req getRequest
+	decoder := schema.NewDecoder()
+	decoder.Decode(&req, r.URL.Query())
+	return req, nil
+}
+
 func GetHandler(svc Service) http.Handler {
 	return httptransport.NewServer(
 		getEndpoint(svc),
-		func(_ context.Context, r *http.Request) (interface{}, error) {
-			var req getRequest
-			decoder := schema.NewDecoder()
-			decoder.Decode(&req, r.URL.Query())
-			return req, nil
-		},
+		getDecode,
 		encoders.JSONResponseEncoder,
 	)
 }

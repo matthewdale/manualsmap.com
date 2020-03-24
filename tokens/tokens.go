@@ -20,9 +20,10 @@ type Service struct {
 	teamID     string
 	keyID      string
 	privateKey *ecdsa.PrivateKey
+	origin     string
 }
 
-func NewService(teamID string, keyID string, pemKey []byte) (Service, error) {
+func NewService(teamID, keyID string, pemKey []byte, origin string) (Service, error) {
 	block, _ := pem.Decode(pemKey)
 	if block == nil || block.Type != "PRIVATE KEY" {
 		return Service{}, errors.New("invalid private key block")
@@ -40,12 +41,15 @@ func NewService(teamID string, keyID string, pemKey []byte) (Service, error) {
 }
 
 func (svc Service) GetToken() (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.MapClaims{
+	claims := jwt.MapClaims{
 		"iss": svc.teamID,
 		"iat": time.Now().Unix(),
 		"exp": time.Now().Add(1 * time.Hour).Unix(),
-		// "origin": origin,
-	})
+	}
+	if svc.origin != "" {
+		claims["origin"] = svc.origin
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
 	token.Header["kid"] = svc.keyID
 
 	tokenString, err := token.SignedString(svc.privateKey)
