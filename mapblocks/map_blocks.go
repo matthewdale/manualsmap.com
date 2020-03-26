@@ -113,13 +113,7 @@ type getRequest struct {
 }
 
 type getResponse struct {
-	MapBlocks  []MapBlock `json:"mapBlocks"`
-	Err        string     `json:"err,omitempty"`
-	statusCode int
-}
-
-func (res getResponse) StatusCode() int {
-	return res.statusCode
+	MapBlocks []MapBlock `json:"mapBlocks"`
 }
 
 func getEndpoint(svc Service) endpoint.Endpoint {
@@ -131,7 +125,10 @@ func getEndpoint(svc Service) endpoint.Endpoint {
 			r.MaxLatitude,
 			r.MaxLongitude)
 		if err != nil {
-			return getResponse{Err: err.Error(), statusCode: http.StatusInternalServerError}, nil
+			return nil, encoders.NewJSONError(
+				errors.WithMessage(err, "error getting map block"),
+				http.StatusInternalServerError,
+			)
 		}
 		return getResponse{MapBlocks: mapBlocks}, nil
 	}

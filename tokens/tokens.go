@@ -60,20 +60,17 @@ func (svc Service) GetToken() (string, error) {
 }
 
 type getResponse struct {
-	Token      string `json:"token,omitempty"`
-	Err        string `json:"err,omitempty"`
-	statusCode int
-}
-
-func (res getResponse) StatusCode() int {
-	return res.statusCode
+	Token string `json:"token,omitempty"`
 }
 
 func getEndpoint(svc Service) endpoint.Endpoint {
 	return func(_ context.Context, request interface{}) (interface{}, error) {
 		token, err := svc.GetToken()
 		if err != nil {
-			return getResponse{Err: err.Error(), statusCode: http.StatusInternalServerError}, nil
+			return nil, encoders.NewJSONError(
+				errors.WithMessage(err, "error getting token"),
+				http.StatusInternalServerError,
+			)
 		}
 		return getResponse{Token: token}, nil
 	}
