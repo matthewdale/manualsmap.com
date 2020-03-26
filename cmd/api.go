@@ -30,6 +30,8 @@ var opts struct {
 
 	// Postgres connection.
 	PSQLConn string `kong:"required,name='psql-conn',help='Postgres SQL connection string'"`
+
+	LicenseSalt string `kong:"required,name='license-salt',help='salt for hashed license plate information'"`
 }
 
 func main() {
@@ -53,7 +55,7 @@ func main() {
 	if err != nil {
 		log.Fatal("Error connecting to Postgres DB", err)
 	}
-	mapBlocksSvc := mapblocks.NewService(db)
+	mapBlocksSvc := mapblocks.NewService(db, []byte(opts.LicenseSalt))
 	router.Methods("GET").Path("/mapblocks").Handler(mapblocks.GetHandler(mapBlocksSvc))
 	router.Methods("GET").Path("/mapblocks/{id}/cars").Handler(mapblocks.GetCarsHandler(mapBlocksSvc))
 	router.Methods("POST").Path("/cars").Handler(mapblocks.PostCarsHandler(mapBlocksSvc))

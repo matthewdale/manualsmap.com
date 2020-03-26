@@ -2,12 +2,15 @@ package mapblocks
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -17,6 +20,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/xeipuuv/gojsonschema"
+	"golang.org/x/crypto/scrypt"
 
 	"github.com/matthewdale/manualsmap.com/encoders"
 )
@@ -60,6 +64,19 @@ func (svc Service) GetCars(mapBlockID int) ([]Car, error) {
 	return cars, nil
 }
 
+var nonAlphanumeric = regexp.MustCompile(`[^\w\d]`)
+
+func (svc Service) licenseHash(licenseState, licensePlate string) (string, error) {
+	license := []byte(fmt.Sprintf("%s-%s",
+		strings.ToUpper(strings.TrimSpace(licenseState)),
+		strings.ToUpper(nonAlphanumeric.ReplaceAllString(licensePlate, ""))))
+	hash, err := scrypt.Key(license, svc.salt, 1<<15, 8, 1, 32)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(hash), nil
+}
+
 const insertCarQuery = `
 INSERT INTO cars(
 	license_hash,
@@ -83,10 +100,10 @@ func (svc Service) InsertCar(
 		licenseHash,
 		mapBlockID,
 		car.Year,
-		car.Brand,
-		car.Model,
-		car.Trim,
-		strings.ToLower(car.Color),
+		strings.TrimSpace(car.Brand),
+		strings.TrimSpace(car.Model),
+		strings.TrimSpace(car.Trim),
+		strings.ToLower(strings.TrimSpace(car.Color)),
 		car.ImageURL)
 	if err != nil {
 		return errors.WithMessage(err, "failed to insert car")
@@ -108,8 +125,7 @@ func getCarsEndpoint(svc Service) endpoint.Endpoint {
 		if err != nil {
 			return nil, encoders.NewJSONError(
 				errors.WithMessage(err, "error getting car"),
-				http.StatusInternalServerError,
-			)
+				http.StatusInternalServerError)
 		}
 		return getCarsResponse{Cars: cars}, nil
 	}
@@ -124,15 +140,13 @@ func GetCarsHandler(svc Service) http.Handler {
 			if !ok {
 				return nil, encoders.NewJSONError(
 					errors.New("invalid request, missing {id} in path"),
-					http.StatusBadRequest,
-				)
+					http.StatusBadRequest)
 			}
 			mapBlockID, err := strconv.Atoi(id)
 			if err != nil {
 				return nil, encoders.NewJSONError(
 					errors.WithMessage(err, "invalid {id} format, must be integer"),
-					http.StatusBadRequest,
-				)
+					http.StatusBadRequest)
 			}
 			return getCarsRequest{mapBlockID: mapBlockID}, nil
 		},
@@ -160,7 +174,6 @@ func init() {
 	var err error
 	postCarsRequestSchema, err = gojsonschema.NewSchema(gojsonschema.NewGoLoader(map[string]interface{}{
 		"$schema": "http://json-schema.org/draft-07/schema#",
-		"$id":     "http://example.com/product.schema.json",
 		"type":    "object",
 		"properties": map[string]interface{}{
 			"car": map[string]interface{}{
@@ -222,12 +235,6 @@ func init() {
 	}
 }
 
-func licenseHash(licenseState, licensePlate string) (string, error) {
-	// TODO: Salt + hash input.
-	// TODO: Validate state enumeration.
-	return strings.ToLower(licenseState) + strings.ToUpper(licensePlate), nil
-}
-
 func postCarsEndpoint(svc Service) endpoint.Endpoint {
 	return func(_ context.Context, request interface{}) (interface{}, error) {
 		r := request.(postCarsRequest)
@@ -237,29 +244,25 @@ func postCarsEndpoint(svc Service) endpoint.Endpoint {
 		if err != nil {
 			return nil, encoders.NewJSONError(
 				errors.WithMessage(err, "reCAPTCHA server error"),
-				http.StatusInternalServerError,
-			)
+				http.StatusInternalServerError)
 		}
 		if !valid {
 			return nil, encoders.NewJSONError(
 				errors.New("reCAPTCHA validation failed"),
-				http.StatusForbidden,
-			)
+				http.StatusForbidden)
 		}
 
-		hash, err := licenseHash(r.LicenseState, r.LicensePlate)
+		hash, err := svc.licenseHash(r.LicenseState, r.LicensePlate)
 		if err != nil {
 			return nil, encoders.NewJSONError(
 				errors.WithMessage(err, "error generating license hash"),
-				http.StatusInternalServerError,
-			)
+				http.StatusInternalServerError)
 		}
 		block, err := svc.GetMapBlock(r.Latitude, r.Longitude)
 		if err != nil {
 			return nil, encoders.NewJSONError(
 				errors.WithMessage(err, "error getting map block"),
-				http.StatusInternalServerError,
-			)
+				http.StatusInternalServerError)
 		}
 		// TODO: Do these in a transaction so it can be rolled back in case there's a
 		// duplicate key constraint inserting the car.
@@ -267,15 +270,13 @@ func postCarsEndpoint(svc Service) endpoint.Endpoint {
 			if err := svc.InsertMapBlock(r.Latitude, r.Longitude); err != nil {
 				return nil, encoders.NewJSONError(
 					errors.WithMessage(err, "error inserting map block"),
-					http.StatusInternalServerError,
-				)
+					http.StatusInternalServerError)
 			}
 			block, err = svc.GetMapBlock(r.Latitude, r.Longitude)
 			if err != nil {
 				return nil, encoders.NewJSONError(
 					errors.WithMessage(err, "error getting map block"),
-					http.StatusInternalServerError,
-				)
+					http.StatusInternalServerError)
 			}
 		}
 		err = svc.InsertCar(r.Car, hash, block.ID)
@@ -283,8 +284,7 @@ func postCarsEndpoint(svc Service) endpoint.Endpoint {
 			// TODO: Handle duplicate key.
 			return nil, encoders.NewJSONError(
 				errors.WithMessage(err, "error inserting car"),
-				http.StatusInternalServerError,
-			)
+				http.StatusInternalServerError)
 		}
 		return postCarsResponse{LicenseHash: hash}, nil
 	}
@@ -299,8 +299,7 @@ func postCarsDecoder(_ context.Context, r *http.Request) (interface{}, error) {
 	if err != nil {
 		return nil, encoders.NewJSONError(
 			errors.WithMessage(err, "error reading body"),
-			http.StatusInternalServerError,
-		)
+			http.StatusInternalServerError)
 	}
 	defer r.Body.Close()
 
@@ -308,15 +307,13 @@ func postCarsDecoder(_ context.Context, r *http.Request) (interface{}, error) {
 	if err != nil {
 		return nil, encoders.NewJSONError(
 			errors.WithMessage(err, "error validating JSON body"),
-			http.StatusInternalServerError,
-		)
+			http.StatusInternalServerError)
 	}
 	if !result.Valid() {
 		return nil, encoders.NewJSONError(
 			// TODO: Is there a good way to display multiple errors?
 			errors.New(result.Errors()[0].String()),
-			http.StatusBadRequest,
-		)
+			http.StatusBadRequest)
 	}
 
 	var req postCarsRequest
@@ -324,15 +321,13 @@ func postCarsDecoder(_ context.Context, r *http.Request) (interface{}, error) {
 	if err != nil {
 		return nil, encoders.NewJSONError(
 			errors.WithMessage(err, "error unmarshalling JSON body"),
-			http.StatusInternalServerError,
-		)
+			http.StatusInternalServerError)
 	}
 	ip, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		return nil, encoders.NewJSONError(
 			errors.WithMessage(err, "failed to get remote IP"),
-			http.StatusInternalServerError,
-		)
+			http.StatusInternalServerError)
 	}
 	req.remoteIP = ip
 	return req, nil

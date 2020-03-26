@@ -18,7 +18,8 @@ mapkit.init({
 });
 
 var map = new mapkit.Map("map", {
-    tracksUserLocation: true,
+    // TODO: Is there any way to get rid of the user location overlay?
+    // tracksUserLocation: true,
     showsUserLocationControl: true,
 });
 

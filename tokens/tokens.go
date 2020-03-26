@@ -69,8 +69,7 @@ func getEndpoint(svc Service) endpoint.Endpoint {
 		if err != nil {
 			return nil, encoders.NewJSONError(
 				errors.WithMessage(err, "error getting token"),
-				http.StatusInternalServerError,
-			)
+				http.StatusInternalServerError)
 		}
 		return getResponse{Token: token}, nil
 	}

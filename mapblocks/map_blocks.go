@@ -14,11 +14,12 @@ import (
 )
 
 type Service struct {
-	db *sql.DB
+	db   *sql.DB
+	salt []byte
 }
 
-func NewService(db *sql.DB) Service {
-	return Service{db: db}
+func NewService(db *sql.DB, salt []byte) Service {
+	return Service{db: db, salt: salt}
 }
 
 type MapBlock struct {
@@ -127,8 +128,7 @@ func getEndpoint(svc Service) endpoint.Endpoint {
 		if err != nil {
 			return nil, encoders.NewJSONError(
 				errors.WithMessage(err, "error getting map block"),
-				http.StatusInternalServerError,
-			)
+				http.StatusInternalServerError)
 		}
 		return getResponse{MapBlocks: mapBlocks}, nil
 	}
