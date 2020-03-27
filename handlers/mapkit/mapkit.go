@@ -1,4 +1,6 @@
-package tokens
+// Package mapkit provides HTTP handlers for initializing the
+// Apple MapKit JS maps toolkit.
+package mapkit
 
 import (
 	"context"
@@ -23,8 +25,13 @@ type Service struct {
 	origin     string
 }
 
-func NewService(teamID, keyID string, pemKey []byte, origin string) (Service, error) {
-	block, _ := pem.Decode(pemKey)
+func NewService(
+	teamID,
+	keyID string,
+	pemPrivateKey []byte,
+	origin string,
+) (Service, error) {
+	block, _ := pem.Decode(pemPrivateKey)
 	if block == nil || block.Type != "PRIVATE KEY" {
 		return Service{}, errors.New("invalid private key block")
 	}
@@ -59,11 +66,11 @@ func (svc Service) GetToken() (string, error) {
 	return tokenString, nil
 }
 
-type getResponse struct {
-	Token string `json:"token,omitempty"`
+type getTokenResponse struct {
+	Token string `json:"token"`
 }
 
-func getEndpoint(svc Service) endpoint.Endpoint {
+func getTokenEndpoint(svc Service) endpoint.Endpoint {
 	return func(_ context.Context, request interface{}) (interface{}, error) {
 		token, err := svc.GetToken()
 		if err != nil {
@@ -71,13 +78,13 @@ func getEndpoint(svc Service) endpoint.Endpoint {
 				errors.WithMessage(err, "error getting token"),
 				http.StatusInternalServerError)
 		}
-		return getResponse{Token: token}, nil
+		return getTokenResponse{Token: token}, nil
 	}
 }
 
-func GetHandler(svc Service) http.Handler {
+func GetTokenHandler(svc Service) http.Handler {
 	return httptransport.NewServer(
-		getEndpoint(svc),
+		getTokenEndpoint(svc),
 		func(_ context.Context, r *http.Request) (interface{}, error) { return nil, nil },
 		encoders.JSONResponseEncoder,
 	)

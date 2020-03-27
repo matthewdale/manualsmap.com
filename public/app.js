@@ -9,13 +9,48 @@ var canvi = new Canvi({
 
 mapkit.init({
     authorizationCallback: function (done) {
-        fetch("/token")
+        fetch("/mapkit/token")
             .then(response => response.json())
             .then(result => {
                 done(result.token)
             });
     }
 });
+
+function generateSignature(callback, parameters) {
+    let strParameters = {};
+    for (let key in parameters) {
+        strParameters[key] = parameters[key].toString();
+    }
+    let options = {
+        method: "POST",
+        body: JSON.stringify({ parameters: strParameters }),
+        headers: {
+            "Content-Type": "application/json",
+        },
+    };
+    fetch("/images/signature", options)
+        .then(res => res.json())
+        .then(result => {
+            console.log(result)
+            // TODO: What about on failure?
+            callback(result.signature);
+        });
+}
+
+var uploadWidget = cloudinary.createUploadWidget({
+    cloudName: "dawfgqsur",
+    apiKey: 263238496553624, 
+    uploadPreset: "manualsmap_com",
+    uploadSignature: generateSignature,
+    sources: ["local", "url", "camera"],
+    cropping: true,
+}, (error, result) => {
+    // TODO: Figure out how to get this result into the POST /cars form.
+    if (!error && result && result.event === "success") {
+        console.log("Done! Here is the image info: ", result.info);
+    }
+})
 
 var map = new mapkit.Map("map", {
     // TODO: Is there any way to get rid of the user location overlay?
@@ -67,13 +102,19 @@ function addCar() {
     let form = $("#addCarFormTemplate").clone();
     form.prop("id", "addCarForm");
 
+    // Add and render reCAPTCHA checkbox.
     let recaptcha = document.createElement("div");
     recaptcha.setAttribute("id", "recaptcha");
     let script = document.createElement("script");
     script.appendChild(document.createTextNode("renderRecaptcha();"));
+    form.find("#submit").before(recaptcha);
+    form.find("#submit").before(script);
 
-    form.find("button").before(recaptcha);
-    form.find("button").before(script);
+    form.find("#cloudinary").on("click", function () {
+        uploadWidget.open();
+        return false;
+    });
+
     form.on("submit", function (event) {
         // TODO: Form validation.
         let form = event.target;
@@ -84,7 +125,6 @@ function addCar() {
                 model: form["model"].value,
                 trim: form["trim"].value,
                 color: form["color"].value,
-                imageUrl: form["imageUrl"].value,
             },
             licenseState: form["licenseState"].value,
             licensePlate: form["licensePlate"].value,

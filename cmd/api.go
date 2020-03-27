@@ -11,8 +11,9 @@ import (
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 
-	"github.com/matthewdale/manualsmap.com/mapblocks"
-	"github.com/matthewdale/manualsmap.com/tokens"
+	"github.com/matthewdale/manualsmap.com/handlers/images"
+	"github.com/matthewdale/manualsmap.com/handlers/mapblocks"
+	"github.com/matthewdale/manualsmap.com/handlers/mapkit"
 )
 
 var opts struct {
@@ -22,11 +23,14 @@ var opts struct {
 	// Mapkit JS configuration.
 	AppleTeamID  string `kong:"required,name='apple-team-id',help='Apple developer team ID'"`
 	MapkitKeyID  string `kong:"required,name='mapkit-key-id',help='Apple Mapkit key ID'"`
-	MapkitKey    string `kong:"required,name='mapkit-key',help='path to the Apple Mapkit P8/PEM secret file'"`
+	MapkitSecret string `kong:"required,name='mapkit-secret',help='path to the Apple Mapkit P8/PEM secret file'"`
 	MapkitOrigin string `kong:"name='mapkit-origin',help='Apple Mapkit JWT origin domain'"`
 
 	// reCAPTCHA API configuration.
-	RecaptchaKey string `kong:"required,name='recaptcha-key',help='reCAPTCHA secret key'"`
+	RecaptchaSecret string `kong:"required,name='recaptcha-secret',help='reCAPTCHA API secret'"`
+
+	// Cloudinary API configuration.
+	CloudinarySecret string `kong:"required,name='cloudinary-secret',help='Cloudinary API secret'"`
 
 	// Postgres connection.
 	PSQLConn string `kong:"required,name='psql-conn',help='Postgres SQL connection string'"`
@@ -37,19 +41,22 @@ var opts struct {
 func main() {
 	kong.Parse(&opts, kong.UsageOnError())
 
-	recaptcha.Init(opts.RecaptchaKey)
+	recaptcha.Init(opts.RecaptchaSecret)
 
 	router := mux.NewRouter()
 
-	mapkitSecret, err := ioutil.ReadFile(opts.MapkitKey)
+	mapkitSecret, err := ioutil.ReadFile(opts.MapkitSecret)
 	if err != nil {
 		log.Fatal("Error reading secret key", err)
 	}
-	tokensSvc, err := tokens.NewService(opts.AppleTeamID, opts.MapkitKeyID, mapkitSecret, opts.MapkitOrigin)
+	mapkitSvc, err := mapkit.NewService(opts.AppleTeamID, opts.MapkitKeyID, mapkitSecret, opts.MapkitOrigin)
 	if err != nil {
 		log.Fatal("Error parsing private key PEM file", err)
 	}
-	router.Methods("GET").Path("/token").Handler(tokens.GetHandler(tokensSvc))
+	router.Methods("GET").Path("/mapkit/token").Handler(mapkit.GetTokenHandler(mapkitSvc))
+
+	imagesSvc := images.NewService(opts.CloudinarySecret)
+	router.Methods("POST").Path("/images/signature").Handler(images.PostSignatureHandler(imagesSvc))
 
 	db, err := sql.Open("postgres", opts.PSQLConn)
 	if err != nil {

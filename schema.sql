@@ -14,6 +14,7 @@ CREATE TABLE cars (
     trim TEXT NOT NULL,
     color TEXT NOT NULL,
     image_url TEXT NOT NULL,
+    cloudinary_public_id TEXT NOT NULL,
     validated BOOLEAN NOT NULL DEFAULT FALSE,
     created timestamp NOT NULL DEFAULT NOW()
 );

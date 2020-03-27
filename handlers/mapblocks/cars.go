@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/dpapathanasiou/go-recaptcha"
 	"github.com/go-kit/kit/endpoint"
@@ -26,14 +27,18 @@ import (
 )
 
 type Car struct {
-	Year     int    `json:"year"`
-	Brand    string `json:"brand"`
-	Model    string `json:"model"`
-	Trim     string `json:"trim"`
-	Color    string `json:"color"`
-	ImageURL string `json:"imageUrl"`
+	Year      int       `json:"year"`
+	Brand     string    `json:"brand"`
+	Model     string    `json:"model"`
+	Trim      string    `json:"trim"`
+	Color     string    `json:"color"`
+	ImageURL  string    `json:"imageUrl"`
+	Validated bool      `json:"-"`
+	Created   time.Time `json:"-"`
 }
 
+// TODO: Fetch additional columns, order by created descending,
+// and paginate.
 const getCarsQuery = `
 SELECT
 	year, brand, model, trim, color, image_url
@@ -295,13 +300,14 @@ func postCarsEndpoint(svc Service) endpoint.Endpoint {
 const maxBodyBytes = 5 * 1024 * 1024
 
 func postCarsDecoder(_ context.Context, r *http.Request) (interface{}, error) {
+	defer r.Body.Close()
+
 	body, err := ioutil.ReadAll(io.LimitReader(r.Body, maxBodyBytes))
 	if err != nil {
 		return nil, encoders.NewJSONError(
 			errors.WithMessage(err, "error reading body"),
 			http.StatusInternalServerError)
 	}
-	defer r.Body.Close()
 
 	result, err := postCarsRequestSchema.Validate(gojsonschema.NewBytesLoader(body))
 	if err != nil {
