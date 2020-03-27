@@ -55,13 +55,15 @@ func main() {
 	}
 	router.Methods("GET").Path("/mapkit/token").Handler(mapkit.GetTokenHandler(mapkitSvc))
 
-	imagesSvc := images.NewService(opts.CloudinarySecret)
-	router.Methods("POST").Path("/images/signature").Handler(images.PostSignatureHandler(imagesSvc))
-
 	db, err := sql.Open("postgres", opts.PSQLConn)
 	if err != nil {
 		log.Fatal("Error connecting to Postgres DB", err)
 	}
+
+	imagesSvc := images.NewService(db, opts.CloudinarySecret)
+	router.Methods("POST").Path("/images/signature").Handler(images.PostSignatureHandler(imagesSvc))
+	router.Methods("POST").Path("/images/notification").Handler(images.PostNotificationHandler(imagesSvc))
+
 	mapBlocksSvc := mapblocks.NewService(db, []byte(opts.LicenseSalt))
 	router.Methods("GET").Path("/mapblocks").Handler(mapblocks.GetHandler(mapBlocksSvc))
 	router.Methods("GET").Path("/mapblocks/{id}/cars").Handler(mapblocks.GetCarsHandler(mapBlocksSvc))

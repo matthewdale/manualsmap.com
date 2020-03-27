@@ -23,8 +23,11 @@ type JSONError struct {
 	statusCode int
 }
 
-func NewJSONError(err error, statusCode int) JSONError {
-	return JSONError{err, statusCode}
+func NewJSONError(err error, statusCode int) error {
+	if err == nil {
+		return nil
+	}
+	return &JSONError{err, statusCode}
 }
 
 func (err JSONError) MarshalJSON() ([]byte, error) {
@@ -41,23 +44,3 @@ func (err JSONError) StatusCode() int {
 	}
 	return err.statusCode
 }
-
-// func JSONErrorsEndpoint(e endpoint.Endpoint) endpoint.Endpoint {
-// 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-// 		resp, err := e(ctx, request)
-// 		if err != nil {
-// 			return nil, jsonError{err, 0}
-// 		}
-// 		return resp, nil
-// 	}
-// }
-
-// func JSONErrorsDecodeRequestFunc(d httptransport.DecodeRequestFunc) httptransport.DecodeRequestFunc {
-// 	return func(ctx context.Context, r *http.Request) (interface{}, error) {
-// 		resp, err := d(ctx, r)
-// 		if err != nil {
-// 			return nil, jsonError{err, 0}
-// 		}
-// 		return resp, nil
-// 	}
-// }

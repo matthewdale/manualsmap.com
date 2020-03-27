@@ -95,6 +95,7 @@ func (svc Service) GetMapBlock(latitude, longitude float64) (*MapBlock, error) {
 	return &block, nil
 }
 
+// TODO: Adjust map block size. Consider 0.02 instead of 0.01
 const insertMapBlockQuery = `
 INSERT INTO map_blocks (latitude, longitude)
 VALUES (TRUNC($1, 2), TRUNC($2, 2))

@@ -32,7 +32,6 @@ function generateSignature(callback, parameters) {
     fetch("/images/signature", options)
         .then(res => res.json())
         .then(result => {
-            console.log(result)
             // TODO: What about on failure?
             callback(result.signature);
         });
@@ -44,7 +43,6 @@ var uploadWidget = cloudinary.createUploadWidget({
     uploadPreset: "manualsmap_com",
     uploadSignature: generateSignature,
     sources: ["local", "url", "camera"],
-    cropping: true,
 }, (error, result) => {
     // TODO: Figure out how to get this result into the POST /cars form.
     if (!error && result && result.event === "success") {
@@ -107,8 +105,8 @@ function addCar() {
     recaptcha.setAttribute("id", "recaptcha");
     let script = document.createElement("script");
     script.appendChild(document.createTextNode("renderRecaptcha();"));
-    form.find("#submit").before(recaptcha);
-    form.find("#submit").before(script);
+    form.find("#recaptcha").before(recaptcha);
+    form.find("#recaptcha").before(script);
 
     form.find("#cloudinary").on("click", function () {
         uploadWidget.open();
