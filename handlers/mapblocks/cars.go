@@ -240,16 +240,21 @@ func init() {
 			"brand": map[string]interface{}{
 				"type":      "string",
 				"minLength": 2,
+				"maxLength": 100,
 			},
 			"model": map[string]interface{}{
 				"type":      "string",
 				"minLength": 1,
+				"maxLength": 100,
 			},
 			"trim": map[string]interface{}{
-				"type": "string",
+				"type":      "string",
+				"maxLength": 100,
 			},
 			"color": map[string]interface{}{
 				"type": "string",
+				// TODO: Enumeration?
+				"maxLength": 100,
 			},
 			"licenseState": map[string]interface{}{
 				"type": "string",
@@ -263,6 +268,7 @@ func init() {
 			"licensePlate": map[string]interface{}{
 				"type":      "string",
 				"minLength": 3,
+				"maxLength": 20,
 			},
 			"latitude": map[string]interface{}{
 				"type":    "number",

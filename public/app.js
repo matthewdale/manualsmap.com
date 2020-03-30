@@ -112,8 +112,7 @@ function addCar() {
     form.prop("id", "addCarForm");
 
     // Add and render reCAPTCHA checkbox.
-    let recaptcha = document.createElement("div");
-    recaptcha.setAttribute("id", "recaptcha");
+    let recaptcha = $(`<div id="recaptcha"></div>`);
     let script = document.createElement("script");
     script.appendChild(document.createTextNode("renderRecaptcha();"));
     form.find("#recaptcha").before(recaptcha);
@@ -176,10 +175,10 @@ function addCar() {
     })
     let callout = {
         calloutElementForAnnotation: function (annotation) {
-            let div = document.createElement("div");
-            div.appendChild(form.get(0));
+            let div = $(`<div></div>`)
+            div.append(form.get(0));
 
-            return div;
+            return div.get(0);
         },
         calloutAnchorOffsetForAnnotation: function (annotation, element) {
             return CALLOUT_OFFSET;
@@ -216,21 +215,43 @@ function truncate(number, digits) {
 
 //////// Display Cars ////////
 function displayCars(cars) {
-    let elements = cars.map(car => {
-        let div = $("#carDisplay div").clone();
+    // Convert each car into a Bootstrap card.
+    let cards = cars.map(car => {
+        let div = $("#carTemplate .car").clone();
         div.find("#year").text(car.year);
         div.find("#brand").text(car.brand);
         div.find("#model").text(car.model);
         div.find("#trim").text(car.trim);
         div.find("#color").text(car.color);
-        div.find("#imageLink").prop("href", car.imageUrl);
-        div.find("#image").prop("src", car.thumbnailUrl);
+
+        // TODO: Handle "awaiting moderation" or stock photo.
+        if (car.thumbnailUrl) {
+            div.find("#imageLink").prop("href", car.imageUrl);
+            div.find("#image").prop("src", car.thumbnailUrl);
+        } else {
+            div.find("#imageLink").remove();
+        }
 
         return div;
     });
 
-    $("#cars").html("");
-    $("#cars").append(elements);
+    // Build 3 columns of cards using Bootstrap columns.
+    let container = $("#cars");
+    container.html("");
+
+    let i = 0;
+    while (i < cards.length) {
+        let row = $(`<div class="row"></div>`);
+        let j = 0;
+        while (j < 3 && i < cards.length) {
+            let col = $(`<div class="col-md-4"></div>`)
+            col.append(cards[i]);
+            row.append(col);
+            i++;
+            j++;
+        }
+        container.append(row);
+    }
 
     canvi.open();
 }

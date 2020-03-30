@@ -89,6 +89,17 @@
             border-bottom: 13px solid rgba(0, 0, 0, 0);
         }
 
+        .car {
+            margin-top: 5px;
+            margin-bottom: 5px;
+            box-shadow: 1px 1px 5px rgba(0, 0, 0, 0.29);
+        }
+
+        .car-image {
+            max-height: 200px;
+            overflow: hidden;
+        }
+
         .privacy-notice {
             padding: 2px;
             font-size: 10px;
@@ -136,13 +147,12 @@
 </head>
 
 <body>
-    <aside class="canvi-navbar" style="overflow: visible;">
-        <ul class="canvi-navigation">
-            <li>
-                Cars
-                <div id="cars"></div>
-            </li>
-        </ul>
+    <aside class="canvi-navbar">
+        <div class="col-md-12">
+            <h3>Cars seen in map block <i>-124.22,60.23</i></h3>
+        </div>
+        <div id="cars" class="container">
+        </div>
     </aside>
 
     <main class="canvi-content">
@@ -264,17 +274,22 @@
             <button id="submit" type="submit" class="btn btn-primary">Submit</button>
         </form>
 
-        <div id="carDisplay">
-            <div>
-                <span id="year"></span>
-                <span id="brand"></span>
-                <span id="model"></span>
-                <span id="trim"></span><br>
-                Color:
-                <span id="color"></span><br>
-                <a id="imageLink" href="" target="_blank">
-                    <img id="image" src="" />
-                </a>
+        <div id="carTemplate">
+            <div class="car card">
+                <div class="car-image">
+                    <a id="imageLink" href="" target="_blank">
+                        <img id="image" class="card-img-top" src="">
+                    </a>
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <span id="year"></span>
+                        <span id="brand"></span>
+                        <span id="model"></span>
+                        <span id="trim"></span>
+                    </h5>
+                    <p class="card-text"><span id="color"></span></p>
+                </div>
             </div>
         </div>
     </div>
