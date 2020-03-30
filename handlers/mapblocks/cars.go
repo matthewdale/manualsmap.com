@@ -76,6 +76,8 @@ func (svc Service) GetCars(mapBlockID int) ([]Car, error) {
 		if err != nil {
 			return nil, errors.WithMessage(err, "failed to scan car row into struct")
 		}
+		// TODO: If the image is awaiting moderation, add an "awaiting moderation" image.
+		// TODO: If there is no image, add a stock photo.
 		if publicID.Valid && format.Valid {
 			car.Image.PublicID = publicID.String
 			car.Image.Format = format.String
@@ -167,14 +169,13 @@ func getCarsEndpoint(svc Service, imagesSvc images.Service) endpoint.Endpoint {
 		carResponses := make([]carResponse, 0, len(cars))
 		for _, car := range cars {
 			carResponses = append(carResponses, carResponse{
-				Year:     car.Year,
-				Brand:    car.Brand,
-				Model:    car.Model,
-				Trim:     car.Trim,
-				Color:    car.Color,
-				ImageURL: imagesSvc.URL(car.Image, "").String(),
-				// TODO: Define thumbnail transform.
-				ThumbnailURL: imagesSvc.URL(car.Image, "").String(),
+				Year:         car.Year,
+				Brand:        car.Brand,
+				Model:        car.Model,
+				Trim:         car.Trim,
+				Color:        car.Color,
+				ImageURL:     imagesSvc.URL(car.Image, "").String(),
+				ThumbnailURL: imagesSvc.URL(car.Image, "c_limit,w_300").String(),
 			})
 		}
 		return getCarsResponse{Cars: carResponses}, nil
