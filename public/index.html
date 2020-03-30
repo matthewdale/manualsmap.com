@@ -2,6 +2,7 @@
 <html>
 
 <head>
+    <!-- TODO: Favicon -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
@@ -53,6 +54,10 @@
             -webkit-transform-origin: 0 10px;
             transform-origin: 0 10px;
         }
+
+        /* #addCarForm img {
+            width: 320px;
+        } */
 
         #addCarForm:after {
             content: "";
@@ -204,13 +209,23 @@
                 <input name="model" type="text" class="form-control" placeholder="Model">
                 <input name="trim" type="text" class="form-control" placeholder="Trim">
                 <input name="color" type="text" class="form-control" placeholder="Color">
-                <button id="cloudinary" type="button" class="btn btn-secondary">Upload image</button>
+            </div>
+
+            <div class="form-group">
+                <div class="form-row">
+                    <div class="col-md-6">
+                        <button id="cloudinary" type="button" class="btn btn-secondary">Upload image</button>
+                    </div>
+                    <div class="col-md-6">
+                        <img id="image" src="" style="width: 100%;">
+                    </div>
+                </div>
             </div>
 
             <div class="form-group">
                 <div id="recaptcha"></div>
             </div>
-            
+
             <button id="submit" type="submit" class="btn btn-primary">Submit</button>
         </form>
 

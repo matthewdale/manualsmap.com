@@ -2,6 +2,7 @@ package mapblocks
 
 import (
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -13,7 +14,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/dpapathanasiou/go-recaptcha"
 	"github.com/go-kit/kit/endpoint"
@@ -24,26 +24,35 @@ import (
 	"golang.org/x/crypto/scrypt"
 
 	"github.com/matthewdale/manualsmap.com/encoders"
+	"github.com/matthewdale/manualsmap.com/handlers/images"
 )
 
 type Car struct {
-	Year      int       `json:"year"`
-	Brand     string    `json:"brand"`
-	Model     string    `json:"model"`
-	Trim      string    `json:"trim"`
-	Color     string    `json:"color"`
-	ImageURL  string    `json:"imageUrl"`
-	Validated bool      `json:"-"`
-	Created   time.Time `json:"-"`
+	Year  int
+	Brand string
+	Model string
+	Trim  string
+	Color string
+	Image images.Image
 }
 
 // TODO: Fetch additional columns, order by created descending,
 // and paginate.
 const getCarsQuery = `
 SELECT
-	year, brand, model, trim, color, image_url
-FROM cars
-WHERE map_block_id = $1
+	c.year,
+	c.brand,
+	c.model,
+	c.trim,
+	c.color,
+	i.public_id,
+	i.format
+FROM cars c
+LEFT JOIN images i ON
+	i.public_id = c.images_public_id
+	AND i.status = 'approved'
+WHERE c.map_block_id = $1
+ORDER BY c.created DESC
 `
 
 func (svc Service) GetCars(mapBlockID int) ([]Car, error) {
@@ -54,15 +63,22 @@ func (svc Service) GetCars(mapBlockID int) ([]Car, error) {
 	cars := make([]Car, 0, 10)
 	for rows.Next() {
 		var car Car
+		var publicID sql.NullString
+		var format sql.NullString
 		err := rows.Scan(
 			&car.Year,
 			&car.Brand,
 			&car.Model,
 			&car.Trim,
 			&car.Color,
-			&car.ImageURL)
+			&publicID,
+			&format)
 		if err != nil {
 			return nil, errors.WithMessage(err, "failed to scan car row into struct")
+		}
+		if publicID.Valid && format.Valid {
+			car.Image.PublicID = publicID.String
+			car.Image.Format = format.String
 		}
 		cars = append(cars, car)
 	}
@@ -91,25 +107,30 @@ INSERT INTO cars(
 	model,
 	trim,
 	color,
-	image_url
+	images_public_id
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 `
 
 func (svc Service) InsertCar(
-	car Car,
 	licenseHash string,
-	mapBlockID int,
+	mapBlockID,
+	year int,
+	brand,
+	model,
+	trim,
+	color,
+	imagePublicID string,
 ) error {
 	_, err := svc.db.Exec(
 		insertCarQuery,
 		licenseHash,
 		mapBlockID,
-		car.Year,
-		strings.TrimSpace(car.Brand),
-		strings.TrimSpace(car.Model),
-		strings.TrimSpace(car.Trim),
-		strings.ToLower(strings.TrimSpace(car.Color)),
-		car.ImageURL)
+		year,
+		strings.TrimSpace(brand),
+		strings.TrimSpace(model),
+		strings.TrimSpace(trim),
+		strings.ToLower(strings.TrimSpace(color)),
+		strings.TrimSpace(imagePublicID))
 	if err != nil {
 		return errors.WithMessage(err, "failed to insert car")
 	}
@@ -120,11 +141,21 @@ type getCarsRequest struct {
 	mapBlockID int
 }
 
-type getCarsResponse struct {
-	Cars []Car `json:"cars"`
+type carResponse struct {
+	Year         int    `json:"year"`
+	Brand        string `json:"brand"`
+	Model        string `json:"model"`
+	Trim         string `json:"trim"`
+	Color        string `json:"color"`
+	ImageURL     string `json:"imageUrl"`
+	ThumbnailURL string `json:"thumbnailUrl"`
 }
 
-func getCarsEndpoint(svc Service) endpoint.Endpoint {
+type getCarsResponse struct {
+	Cars []carResponse `json:"cars"`
+}
+
+func getCarsEndpoint(svc Service, imagesSvc images.Service) endpoint.Endpoint {
 	return func(_ context.Context, request interface{}) (interface{}, error) {
 		cars, err := svc.GetCars(request.(getCarsRequest).mapBlockID)
 		if err != nil {
@@ -132,13 +163,27 @@ func getCarsEndpoint(svc Service) endpoint.Endpoint {
 				errors.WithMessage(err, "error getting car"),
 				http.StatusInternalServerError)
 		}
-		return getCarsResponse{Cars: cars}, nil
+
+		carResponses := make([]carResponse, 0, len(cars))
+		for _, car := range cars {
+			carResponses = append(carResponses, carResponse{
+				Year:     car.Year,
+				Brand:    car.Brand,
+				Model:    car.Model,
+				Trim:     car.Trim,
+				Color:    car.Color,
+				ImageURL: imagesSvc.URL(car.Image, "").String(),
+				// TODO: Define thumbnail transform.
+				ThumbnailURL: imagesSvc.URL(car.Image, "").String(),
+			})
+		}
+		return getCarsResponse{Cars: carResponses}, nil
 	}
 }
 
-func GetCarsHandler(svc Service) http.Handler {
+func GetCarsHandler(svc Service, imagesSvc images.Service) http.Handler {
 	return httptransport.NewServer(
-		getCarsEndpoint(svc),
+		getCarsEndpoint(svc, imagesSvc),
 		func(_ context.Context, r *http.Request) (interface{}, error) {
 			vars := mux.Vars(r)
 			id, ok := vars["id"]
@@ -160,13 +205,18 @@ func GetCarsHandler(svc Service) http.Handler {
 }
 
 type postCarsRequest struct {
-	Car          Car     `json:"car"`
-	LicenseState string  `json:"licenseState"`
-	LicensePlate string  `json:"licensePlate"`
-	Latitude     float64 `json:"latitude"`
-	Longitude    float64 `json:"longitude"`
-	Recaptcha    string  `json:"recaptcha"`
-	remoteIP     string
+	Year               int     `json:"year"`
+	Brand              string  `json:"brand"`
+	Model              string  `json:"model"`
+	Trim               string  `json:"trim"`
+	Color              string  `json:"color"`
+	LicenseState       string  `json:"licenseState"`
+	LicensePlate       string  `json:"licensePlate"`
+	Latitude           float64 `json:"latitude"`
+	Longitude          float64 `json:"longitude"`
+	Recaptcha          string  `json:"recaptcha"`
+	CloudinaryPublicID string  `json:"cloudinaryPublicId"`
+	remoteIP           string
 }
 
 type postCarsResponse struct {
@@ -181,30 +231,24 @@ func init() {
 		"$schema": "http://json-schema.org/draft-07/schema#",
 		"type":    "object",
 		"properties": map[string]interface{}{
-			"car": map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"year": map[string]interface{}{
-						"type":    "number",
-						"minimum": 1900,
-						"maximum": 2100,
-					},
-					"brand": map[string]interface{}{
-						"type":      "string",
-						"minLength": 2,
-					},
-					"model": map[string]interface{}{
-						"type":      "string",
-						"minLength": 1,
-					},
-					"trim": map[string]interface{}{
-						"type": "string",
-					},
-					"color": map[string]interface{}{
-						"type": "string",
-					},
-				},
-				"required": []string{"year", "brand", "model", "color"},
+			"year": map[string]interface{}{
+				"type":    "number",
+				"minimum": 1900,
+				"maximum": 2100,
+			},
+			"brand": map[string]interface{}{
+				"type":      "string",
+				"minLength": 2,
+			},
+			"model": map[string]interface{}{
+				"type":      "string",
+				"minLength": 1,
+			},
+			"trim": map[string]interface{}{
+				"type": "string",
+			},
+			"color": map[string]interface{}{
+				"type": "string",
 			},
 			"licenseState": map[string]interface{}{
 				"type": "string",
@@ -232,8 +276,11 @@ func init() {
 			"recaptcha": map[string]interface{}{
 				"type": "string",
 			},
+			"cloudinaryPublicId": map[string]interface{}{
+				"type": "string",
+			},
 		},
-		"required": []string{"car", "licenseState", "licensePlate", "latitude", "longitude", "recaptcha"},
+		"required": []string{"year", "brand", "model", "color", "licenseState", "licensePlate", "latitude", "longitude", "recaptcha"},
 	}))
 	if err != nil {
 		log.Fatal("Error loading POST Cars request schema:", err)
@@ -284,7 +331,15 @@ func postCarsEndpoint(svc Service) endpoint.Endpoint {
 					http.StatusInternalServerError)
 			}
 		}
-		err = svc.InsertCar(r.Car, hash, block.ID)
+		err = svc.InsertCar(
+			hash,
+			block.ID,
+			r.Year,
+			r.Brand,
+			r.Model,
+			r.Trim,
+			r.Color,
+			r.CloudinaryPublicID)
 		if err != nil {
 			// TODO: Handle duplicate key.
 			return nil, encoders.NewJSONError(

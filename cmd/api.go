@@ -66,7 +66,7 @@ func main() {
 
 	mapBlocksSvc := mapblocks.NewService(db, []byte(opts.LicenseSalt))
 	router.Methods("GET").Path("/mapblocks").Handler(mapblocks.GetHandler(mapBlocksSvc))
-	router.Methods("GET").Path("/mapblocks/{id}/cars").Handler(mapblocks.GetCarsHandler(mapBlocksSvc))
+	router.Methods("GET").Path("/mapblocks/{id}/cars").Handler(mapblocks.GetCarsHandler(mapBlocksSvc, imagesSvc))
 	router.Methods("POST").Path("/cars").Handler(mapblocks.PostCarsHandler(mapBlocksSvc))
 
 	// TODO: Remove or replace?

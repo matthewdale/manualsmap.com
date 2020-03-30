@@ -4,11 +4,15 @@ import (
 	"context"
 	"crypto/sha1"
 	"database/sql"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
+	"path"
 	"sort"
 	"strings"
 
@@ -69,28 +73,65 @@ func (svc Service) NotificationSignature(body string, timestamp string) string {
 	return hex.EncodeToString(hash[:])
 }
 
+func (svc Service) deliverySignature(img Image, transform string) string {
+	sig := img.Path(transform) + svc.cloudinarySecret
+	hash := sha1.Sum([]byte(sig))
+	return fmt.Sprintf("s--%s--", base64.URLEncoding.EncodeToString(hash[:])[:8])
+}
+
+type Image struct {
+	PublicID string
+	Format   string
+}
+
+func (img Image) Empty() bool {
+	return img.PublicID == "" || img.Format == ""
+}
+
+func (img Image) Path(transform string) string {
+	return path.Join(
+		transform,
+		fmt.Sprintf("%s.%s", img.PublicID, img.Format))
+}
+
+func (svc Service) URL(img Image, transform string) *url.URL {
+	if img.Empty() {
+		return new(url.URL)
+	}
+
+	return &url.URL{
+		Scheme: "https",
+		Host:   "res.cloudinary.com",
+		Path: path.Join(
+			"dawfgqsur",
+			"image",
+			"authenticated",
+			svc.deliverySignature(img, transform),
+			img.Path(transform)),
+	}
+}
+
 const insertImageQuery = `
-INSERT INTO images (public_id, format, version)
-VALUES ($1, $2, $3)
+INSERT INTO images (public_id, format)
+VALUES ($1, $2)
 ON CONFLICT DO NOTHING
 `
 
-func (svc Service) InsertImage(publicID, format string, version int) error {
-	_, err := svc.db.Exec(insertImageQuery, publicID, format, version)
+func (svc Service) InsertImage(publicID, format string) error {
+	_, err := svc.db.Exec(insertImageQuery, publicID, format)
 	return err
 }
 
 const updateImageQuery = `
 UPDATE images
 SET
-	version = $2,
-	status = $3,
+	status = $2,
 	updated = NOW()
 WHERE public_id = $1
 `
 
-func (svc Service) UpdateImage(publicID string, version int, status string) error {
-	_, err := svc.db.Exec(updateImageQuery, publicID, version, status)
+func (svc Service) UpdateImage(publicID, status string) error {
+	_, err := svc.db.Exec(updateImageQuery, publicID, status)
 	return err
 }
 
@@ -142,7 +183,6 @@ func PostSignatureHandler(svc Service) http.Handler {
 type postNotificationRequest struct {
 	NotificationType string `json:"notification_type"`
 	PublicID         string `json:"public_id"`
-	Version          int    `json:"version"`
 	Format           string `json:"format"`
 	ModerationStatus string `json:"moderation_status"`
 }
@@ -154,12 +194,12 @@ func postNotificationEndpoint(svc Service) endpoint.Endpoint {
 		r := request.(postNotificationRequest)
 		switch r.NotificationType {
 		case "upload":
-			err := svc.InsertImage(r.PublicID, r.Format, r.Version)
+			err := svc.InsertImage(r.PublicID, r.Format)
 			return "", encoders.NewJSONError(
 				errors.WithMessage(err, "error inserting image"),
 				http.StatusInternalServerError)
 		case "moderation":
-			err := svc.UpdateImage(r.PublicID, r.Version, r.ModerationStatus)
+			err := svc.UpdateImage(r.PublicID, r.ModerationStatus)
 			return "", encoders.NewJSONError(
 				errors.WithMessage(err, "error inserting image"),
 				http.StatusInternalServerError)

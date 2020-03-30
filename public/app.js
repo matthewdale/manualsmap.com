@@ -18,6 +18,8 @@ mapkit.init({
 });
 
 function generateSignature(callback, parameters) {
+    // Convert all of the parameters to strings to match the
+    // /images/signatures API.
     let strParameters = {};
     for (let key in parameters) {
         strParameters[key] = parameters[key].toString();
@@ -37,9 +39,11 @@ function generateSignature(callback, parameters) {
         });
 }
 
-var uploadWidget = cloudinary.createUploadWidget({
+var imageUploadCallback;
+var cloudinaryUploadInfo;
+var cloudinaryUploadWidget = cloudinary.createUploadWidget({
     cloudName: "dawfgqsur",
-    apiKey: 263238496553624, 
+    apiKey: 263238496553624,
     uploadPreset: "manualsmap_com",
     uploadSignature: generateSignature,
     sources: ["local", "url", "camera"],
@@ -47,8 +51,10 @@ var uploadWidget = cloudinary.createUploadWidget({
     // TODO: Figure out how to get this result into the POST /cars form.
     if (!error && result && result.event === "success") {
         console.log("Done! Here is the image info: ", result.info);
+        imageUploadCallback(result.info);
+        cloudinaryUploadInfo = result.info;
     }
-})
+});
 
 var map = new mapkit.Map("map", {
     // TODO: Is there any way to get rid of the user location overlay?
@@ -109,26 +115,28 @@ function addCar() {
     form.find("#recaptcha").before(script);
 
     form.find("#cloudinary").on("click", function () {
-        uploadWidget.open();
+        cloudinaryUploadWidget.open();
         return false;
     });
+    imageUploadCallback = function (uploadInfo) {
+        form.find("#image").prop("src", uploadInfo.url);
+    };
 
     form.on("submit", function (event) {
         // TODO: Form validation.
         let form = event.target;
         let data = {
-            car: {
-                year: Number(form["year"].value),
-                brand: form["brand"].value,
-                model: form["model"].value,
-                trim: form["trim"].value,
-                color: form["color"].value,
-            },
+            year: Number(form["year"].value),
+            brand: form["brand"].value,
+            model: form["model"].value,
+            trim: form["trim"].value,
+            color: form["color"].value,
             licenseState: form["licenseState"].value,
             licensePlate: form["licensePlate"].value,
             latitude: newCarAnnotation.coordinate.latitude,
             longitude: newCarAnnotation.coordinate.longitude,
             recaptcha: grecaptcha.getResponse(),
+            cloudinaryPublicId: cloudinaryUploadInfo.public_id,
         };
         let options = {
             method: "POST",
@@ -146,7 +154,6 @@ function addCar() {
             });
 
         map.removeAnnotation(newCarAnnotation);
-
         newCarAnnotation = null;
         return false;
     })
@@ -200,7 +207,7 @@ function displayCars(cars) {
         div.find("#trim").text(car.trim);
         div.find("#color").text(car.color);
         div.find("#imageLink").prop("href", car.imageUrl);
-        div.find("#image").prop("src", car.imageUrl);
+        div.find("#image").prop("src", car.thumbnailUrl);
 
         return div;
     });
@@ -211,12 +218,6 @@ function displayCars(cars) {
     // TODO: Necessary?
     canvi.open();
     canvi._removeOverlay();
-}
-
-// TODO: Necessary?
-function hideCars() {
-    $("#carsInfo").html("");
-    canvi.close();
 }
 
 

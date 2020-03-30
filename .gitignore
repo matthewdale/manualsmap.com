@@ -17,3 +17,6 @@
 # Secrets files
 *.p8
 secrets.txt
+
+# Postgres DB
+pgdata

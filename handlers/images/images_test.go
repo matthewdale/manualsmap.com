@@ -1,6 +1,7 @@
 package images
 
 import (
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,4 +30,70 @@ func TestNotificationSignature(t *testing.T) {
 		"0f2cb563a8edbdd6bc865a8c3d14fe9bdbebc1a3",
 		sig,
 		"Expected signatures to match")
+}
+
+func TestDeliverySignature(t *testing.T) {
+	svc := NewService(nil, "abcd")
+	img := Image{
+		PublicID: "sample",
+		Format:   "png",
+	}
+	transform := "w_300,h_250,e_grayscale"
+	sig := svc.deliverySignature(img, transform)
+	assert.Equal(
+		t,
+		"s--INQUGulu--",
+		sig,
+		"Expected signatures to match")
+}
+
+func TestURL(t *testing.T) {
+	tests := []struct {
+		description string
+		img         Image
+		transform   string
+		expected    *url.URL
+	}{
+		{
+			description: "Cloudinary documentation example",
+			img: Image{
+				PublicID: "sample",
+				Format:   "png",
+			},
+			transform: "w_300,h_250,e_grayscale",
+			expected: &url.URL{
+				Scheme: "https",
+				Host:   "res.cloudinary.com",
+				Path:   "dawfgqsur/image/authenticated/s--INQUGulu--/w_300,h_250,e_grayscale/sample.png",
+			},
+		},
+		{
+			description: "Should work with no transform",
+			img: Image{
+				PublicID: "sample",
+				Format:   "png",
+			},
+			transform: "",
+			expected: &url.URL{
+				Scheme: "https",
+				Host:   "res.cloudinary.com",
+				Path:   "dawfgqsur/image/authenticated/s--8u3FOpeL--/sample.png",
+			},
+		},
+	}
+	svc := NewService(nil, "abcd")
+
+	for _, test := range tests {
+		test := test // Capture range variable.
+		t.Run(test.description, func(t *testing.T) {
+			t.Parallel()
+
+			actual := svc.URL(test.img, test.transform)
+			assert.Equal(
+				t,
+				test.expected,
+				actual,
+				"Expected URLs to match")
+		})
+	}
 }

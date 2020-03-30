@@ -9,7 +9,6 @@ CREATE TYPE status_t AS ENUM('pending', 'approved', 'rejected');
 CREATE TABLE images (
     public_id TEXT PRIMARY KEY,
     format TEXT NOT NULL,
-    version INTEGER NOT NULL,
     status status_t NOT NULL DEFAULT 'pending',
     created timestamp NOT NULL DEFAULT NOW(),
     updated timestamp NOT NULL DEFAULT NOW()
@@ -23,6 +22,6 @@ CREATE TABLE cars (
     model TEXT NOT NULL,
     trim TEXT NOT NULL,
     color TEXT NOT NULL,
-    image_public_id TEXT,
+    images_public_id TEXT,
     created timestamp NOT NULL DEFAULT NOW()
 );
