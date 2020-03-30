@@ -30,10 +30,27 @@
             width: 100%;
         }
 
-        #openMenu {
+        #control {
             position: absolute;
             background-color: white;
             top: 0.5em;
+            left: 0.5em;
+            padding: 5px;
+            border-radius: 0.5em;
+            line-height: 1.5em;
+        }
+
+        #info {
+            position: absolute;
+            top: 3.5em;
+            left: 0.5em;
+            padding: 5px;
+        }
+
+        #addCar {
+            position: absolute;
+            background-color: white;
+            top: 4em;
             left: 0.5em;
             padding: 0.5em;
             border-radius: 0.5em;
@@ -72,6 +89,17 @@
             border-bottom: 13px solid rgba(0, 0, 0, 0);
         }
 
+        .privacy-notice {
+            padding: 2px;
+            font-size: 10px;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        #codeLink {
+            padding: 2px;
+            font-size: 10px;
+        }
 
         a:link,
         a:visited {
@@ -108,44 +136,48 @@
 </head>
 
 <body>
-    <aside class="canvi-navbar">
-        <!-- TODO: Add privacy information link -->
-        See <a href="https://github.com/matthewdale/manualsmap.com" target="_blank">code on GitHub</a>.<br>
-        <button type="button" class="btn btn-dark" onclick="canvi.close();">Close</button>
+    <aside class="canvi-navbar" style="overflow: visible;">
         <ul class="canvi-navigation">
             <li>
-                <form onsubmit="submitSearch();return false">
-                    <div class="input-group">
-                        <input id="searchQuery" type="text" class="form-control" placeholder="Search Manuals Map">
-                        <span class="input-group-btn">
-                            <button type="submit" class="btn btn-primary">Search</button>
-                        </span>
-                    </div>
-                </form>
-            </li>
-            <li>
-                <form onsubmit="addCar();return false">
-                    <button type="submit" class="btn btn-dark">Add Car</button>
-                </form>
-            </li>
-            <li>
                 Cars
-                <div id="carsInfo"></div>
+                <div id="cars"></div>
             </li>
         </ul>
     </aside>
 
     <main class="canvi-content">
         <div id="map"></div>
-        <button id="openMenu" type="button" class="btn btn-dark"
-            onclick="canvi.open();canvi._removeOverlay();">Menu</button>
+        <!-- Note: elements that display on top of map must come after or they are hidden. -->
+        <div id="control" class="form-group">
+            <div class="form-row">
+                <div class="col-auto">
+                    <div class="d-flex">
+                        <input id="searchQuery" type="text" class="form-control" placeholder="Search Manuals Map"
+                            style="width: 180px;">
+                        <span class="input-group-btn">
+                            <button type="button" class="btn btn-primary" onclick="submitSearch();">Search</button>
+                        </span>
+                    </div>
+                </div>
+                <div class="col-auto">
+                    <button type="button" class="btn btn-dark" onclick="addCar();">Add Car</button>
+                </div>
+            </div>
+        </div>
+        <div id="info">
+            <div class="privacy-notice" role="button" onclick="displayPrivacyNotice();">Privacy Notice
+            </div>
+            <div id="codeLink">
+                See <a href="https://github.com/matthewdale/manualsmap.com" target="_blank">code on GitHub</a>.
+            </div>
+        </div>
     </main>
 
     <div style="display: none;">
         <form id="addCarFormTemplate">
             <div class="form-group">
                 <label>License Plate</label>
-                <select name="licenseState" class="form-control" name="licenseState">
+                <select name="licenseState" class="form-control form-control-sm" name="licenseState">
                     <option value="AL">Alabama</option>
                     <option value="AK">Alaska</option>
                     <option value="AZ">Arizona</option>
@@ -198,26 +230,29 @@
                     <option value="WI">Wisconsin</option>
                     <option value="WY">Wyoming</option>
                 </select>
-                <input name="licensePlate" type="text" class="form-control" placeholder="License plate">
-                <!-- TODO: Add license plate privacy information -->
+                <input name="licensePlate" type="text" class="form-control form-control-sm" placeholder="License plate">
+                <div class="privacy-notice" role="button" onclick="displayPrivacyNotice();">Privacy Notice</div>
             </div>
 
             <div class="form-group">
                 <label>Car</label>
-                <input name="year" type="text" class="form-control" placeholder="Year">
-                <input name="brand" type="text" class="form-control" placeholder="Brand">
-                <input name="model" type="text" class="form-control" placeholder="Model">
-                <input name="trim" type="text" class="form-control" placeholder="Trim">
-                <input name="color" type="text" class="form-control" placeholder="Color">
+                <input name="year" type="text" class="form-control form-control-sm" placeholder="Year">
+                <input name="brand" type="text" class="form-control form-control-sm" placeholder="Brand">
+                <input name="model" type="text" class="form-control form-control-sm" placeholder="Model">
+                <input name="trim" type="text" class="form-control form-control-sm" placeholder="Trim">
+                <input name="color" type="text" class="form-control form-control-sm" placeholder="Color">
             </div>
 
             <div class="form-group">
                 <div class="form-row">
                     <div class="col-md-6">
                         <button id="cloudinary" type="button" class="btn btn-secondary">Upload image</button>
+                        <button id="removeImage" type="button" class="btn btn-danger" style="display: none;">
+                            Remove image
+                        </button>
                     </div>
                     <div class="col-md-6">
-                        <img id="image" src="" style="width: 100%;">
+                        <img id="image" src="" style="max-height: 100px; max-width: 100%;">
                     </div>
                 </div>
             </div>
@@ -238,7 +273,7 @@
                 Color:
                 <span id="color"></span><br>
                 <a id="imageLink" href="" target="_blank">
-                    <img id="image" src="" style="width: 200px;" />
+                    <img id="image" src="" />
                 </a>
             </div>
         </div>

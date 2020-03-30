@@ -4,7 +4,7 @@ var canvi = new Canvi({
     navbar: ".canvi-navbar",
     content: ".canvi-content",
     pushContent: false,
-    width: "18.5em",
+    width: "80%",
 });
 
 mapkit.init({
@@ -58,14 +58,19 @@ var cloudinaryUploadWidget = cloudinary.createUploadWidget({
 
 var map = new mapkit.Map("map", {
     // TODO: Is there any way to get rid of the user location overlay?
-    // tracksUserLocation: true,
+    showsUserLocation: false,
+    tracksUserLocation: true,
     showsUserLocationControl: true,
 });
 
+function displayPrivacyNotice() {
+    alert("PRIVACY!");
+}
 
 //////// Search ////////
 function submitSearch() {
     search($("#searchQuery").val());
+    $("#searchQuery").blur();
 }
 
 function search(query) {
@@ -114,12 +119,22 @@ function addCar() {
     form.find("#recaptcha").before(recaptcha);
     form.find("#recaptcha").before(script);
 
+    // Hook up the Cloudinary image upload widget to the
+    // add/remove image buttons.
     form.find("#cloudinary").on("click", function () {
         cloudinaryUploadWidget.open();
         return false;
     });
+    form.find("#removeImage").on("click", function () {
+        form.find("#image").prop("src", "");
+        cloudinaryUploadInfo = null;
+        form.find("#cloudinary").show();
+        form.find("#removeImage").hide();
+    });
     imageUploadCallback = function (uploadInfo) {
         form.find("#image").prop("src", uploadInfo.url);
+        form.find("#cloudinary").hide();
+        form.find("#removeImage").show();
     };
 
     form.on("submit", function (event) {
@@ -136,8 +151,10 @@ function addCar() {
             latitude: newCarAnnotation.coordinate.latitude,
             longitude: newCarAnnotation.coordinate.longitude,
             recaptcha: grecaptcha.getResponse(),
-            cloudinaryPublicId: cloudinaryUploadInfo.public_id,
         };
+        if (cloudinaryUploadInfo) {
+            data.cloudinaryPublicId = cloudinaryUploadInfo.public_id;
+        }
         let options = {
             method: "POST",
             body: JSON.stringify(data),
@@ -173,7 +190,7 @@ function addCar() {
     };
     newCarAnnotation = new mapkit.MarkerAnnotation(map.center, {
         draggable: true,
-        title: "Click and hold to drag",
+        title: "Click me! (click and hold to reposition)",
         callout: callout,
     });
     map.addAnnotation(newCarAnnotation);
@@ -212,12 +229,10 @@ function displayCars(cars) {
         return div;
     });
 
-    $("#carsInfo").html("");
-    $("#carsInfo").append(elements);
+    $("#cars").html("");
+    $("#cars").append(elements);
 
-    // TODO: Necessary?
     canvi.open();
-    canvi._removeOverlay();
 }
 
 
@@ -271,6 +286,7 @@ function buildOverlays(mapBlocks) {
         return overlay;
     });
 }
+
 function fetchVisibleOverlays() {
     // If we're going to fetch too many blocks, skip it.
     if (map.region.span.latitudeDelta >= maxSpan || map.region.span.longitudeDelta >= maxSpan) {
@@ -300,6 +316,3 @@ var overlays = [];
 map.addEventListener("region-change-end", function (event) {
     fetchVisibleOverlays();
 });
-
-canvi.open();
-canvi._removeOverlay();
