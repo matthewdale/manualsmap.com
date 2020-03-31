@@ -15,7 +15,11 @@ RUN GOOS=linux go build -o api ./cmd/api.go
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
 WORKDIR /app
+
 COPY --from=builder /go/src/github.com/matthewdale/manualsmap.com/api .
 COPY public public/
+COPY DOKKU_SCALE .
 COPY api.sh .
+
 CMD ["sh", "api.sh"]
+EXPOSE 80

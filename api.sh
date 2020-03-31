@@ -3,7 +3,7 @@
 # Use 'exec' to make './api' PID 1, replacing 'sh'
 # and correctly forwarding signals.
 exec ./api \
-    --addr=:8080 \
+    --addr=:80 \
     --apple-team-id=$APPLE_TEAM_ID \
     --mapkit-key-id=$MAPKIT_KEY_ID \
     --mapkit-secret=/secrets/mapkit-secret.p8 \
