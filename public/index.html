@@ -161,13 +161,15 @@
         <div id="control" class="form-group">
             <div class="form-row">
                 <div class="col-auto">
-                    <div class="d-flex">
-                        <input id="searchQuery" type="text" class="form-control" placeholder="Search Manuals Map"
-                            style="width: 180px;">
-                        <span class="input-group-btn">
-                            <button type="button" class="btn btn-primary" onclick="submitSearch();">Search</button>
-                        </span>
-                    </div>
+                    <form onsubmit="submitSearch();return false;">
+                        <div class="d-flex">
+                            <input id="searchQuery" type="text" class="form-control" placeholder="Search Manuals Map"
+                                style="width: 180px;">
+                            <span class="input-group-btn">
+                                <button type="submit" class="btn btn-primary">Search</button>
+                            </span>
+                        </div>
+                    </form>
                 </div>
                 <div class="col-auto">
                     <button type="button" class="btn btn-dark" onclick="addCar();">Add Car</button>
