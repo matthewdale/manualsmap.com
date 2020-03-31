@@ -39,6 +39,7 @@ var opts struct {
 }
 
 func main() {
+	// TODO: Add logging.
 	kong.Parse(&opts, kong.UsageOnError())
 
 	recaptcha.Init(opts.RecaptchaSecret)

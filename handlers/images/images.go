@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"path"
@@ -190,18 +191,27 @@ type postNotificationRequest struct {
 type postNotificationResponse struct{}
 
 func postNotificationEndpoint(svc Service) endpoint.Endpoint {
+	logErr := func(err error) {
+		log.Printf("[postNotificationEndpoint] ERROR: %s: ", err)
+	}
 	return func(_ context.Context, request interface{}) (interface{}, error) {
 		r := request.(postNotificationRequest)
+		var err error
 		switch r.NotificationType {
 		case "upload":
-			err := svc.InsertImage(r.PublicID, r.Format)
-			return "", encoders.NewJSONError(
-				errors.WithMessage(err, "error inserting image"),
-				http.StatusInternalServerError)
+			err = errors.WithMessage(
+				svc.InsertImage(r.PublicID, r.Format),
+				"error inserting image")
 		case "moderation":
-			err := svc.UpdateImage(r.PublicID, r.ModerationStatus)
-			return "", encoders.NewJSONError(
-				errors.WithMessage(err, "error inserting image"),
+			err = errors.WithMessage(
+				svc.UpdateImage(r.PublicID, r.ModerationStatus),
+				"error updating image")
+		}
+
+		if err != nil {
+			logErr(err)
+			return nil, encoders.NewJSONError(
+				errors.New("error handling notification"),
 				http.StatusInternalServerError)
 		}
 
@@ -211,13 +221,18 @@ func postNotificationEndpoint(svc Service) endpoint.Endpoint {
 }
 
 func postNotificationDecoder(svc Service) httptransport.DecodeRequestFunc {
+	logErr := func(err error) {
+		log.Printf("[postNotificationDecoder] ERROR: %s", err)
+	}
 	return func(_ context.Context, r *http.Request) (interface{}, error) {
 		defer r.Body.Close()
 		// Limit the number of bytes of the HTTP POST body read into memory to 5MiB.
 		body, err := ioutil.ReadAll(io.LimitReader(r.Body, 5*1024*1024))
 		if err != nil {
+			msg := "failed to read HTTP body"
+			logErr(errors.WithMessage(err, msg))
 			return nil, encoders.NewJSONError(
-				errors.WithMessage(err, "error reading body"),
+				errors.New(msg),
 				http.StatusInternalServerError)
 		}
 
@@ -226,18 +241,23 @@ func postNotificationDecoder(svc Service) httptransport.DecodeRequestFunc {
 		expectedSig := svc.NotificationSignature(string(body), timestamp)
 		actualSig := r.Header.Get("x-cld-signature")
 		if expectedSig != actualSig {
+			msg := "signature does not match expected"
+			logErr(errors.New(msg))
 			return nil, encoders.NewJSONError(
-				errors.New("signature does not match expected"),
+				errors.New(msg),
 				http.StatusUnauthorized)
 		}
 
 		var req postNotificationRequest
 		err = json.Unmarshal(body, &req)
 		if err != nil {
+			msg := "failed to unmarshal JSON body"
+			logErr(errors.WithMessage(err, msg))
 			return nil, encoders.NewJSONError(
-				errors.WithMessage(err, "error unmarshalling JSON body"),
+				errors.New(msg),
 				http.StatusInternalServerError)
 		}
+
 		return req, nil
 	}
 }
