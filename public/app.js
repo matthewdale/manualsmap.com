@@ -131,7 +131,7 @@ function addCar() {
         form.find("#removeImage").hide();
     });
     imageUploadCallback = function (uploadInfo) {
-        form.find("#image").prop("src", uploadInfo.url);
+        form.find("#image").prop("src", uploadInfo.secure_url);
         form.find("#cloudinary").hide();
         form.find("#removeImage").show();
     };
