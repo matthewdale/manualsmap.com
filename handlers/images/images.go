@@ -2,139 +2,18 @@ package images
 
 import (
 	"context"
-	"crypto/sha1"
-	"database/sql"
-	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"net/url"
-	"path"
-	"sort"
-	"strings"
 
 	"github.com/go-kit/kit/endpoint"
 	httptransport "github.com/go-kit/kit/transport/http"
 	"github.com/matthewdale/manualsmap.com/encoders"
+	"github.com/matthewdale/manualsmap.com/services"
 	"github.com/pkg/errors"
 )
-
-type Service struct {
-	db               *sql.DB
-	cloudinarySecret string
-}
-
-func NewService(db *sql.DB, cloudinarySecret string) Service {
-	return Service{db: db, cloudinarySecret: cloudinarySecret}
-}
-
-// encode encodes parameters in the Cloudinary signature
-// string format.
-func encode(parameters map[string]string) string {
-	var buf strings.Builder
-
-	// Collect and sort the keys in ascending order.
-	keys := make([]string, 0, len(parameters))
-	for k := range parameters {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	// Build the encoded signature string like
-	// key1=value1&key2=value2&...
-	for _, key := range keys {
-		val := parameters[key]
-		if buf.Len() > 0 {
-			buf.WriteByte('&')
-		}
-		buf.WriteString(key)
-		buf.WriteByte('=')
-		buf.WriteString(val)
-	}
-
-	return buf.String()
-}
-
-func (svc Service) UploadSignature(parameters map[string]string) string {
-	if parameters == nil {
-		return ""
-	}
-	sig := encode(parameters) + svc.cloudinarySecret
-	hash := sha1.Sum([]byte(sig))
-	return hex.EncodeToString(hash[:])
-}
-
-func (svc Service) NotificationSignature(body string, timestamp string) string {
-	sig := body + timestamp + svc.cloudinarySecret
-	hash := sha1.Sum([]byte(sig))
-	return hex.EncodeToString(hash[:])
-}
-
-func (svc Service) deliverySignature(img Image, transform string) string {
-	sig := img.Path(transform) + svc.cloudinarySecret
-	hash := sha1.Sum([]byte(sig))
-	return fmt.Sprintf("s--%s--", base64.URLEncoding.EncodeToString(hash[:])[:8])
-}
-
-type Image struct {
-	PublicID string
-	Format   string
-}
-
-func (img Image) Empty() bool {
-	return img.PublicID == "" || img.Format == ""
-}
-
-func (img Image) Path(transform string) string {
-	return path.Join(
-		transform,
-		fmt.Sprintf("%s.%s", img.PublicID, img.Format))
-}
-
-func (svc Service) URL(img Image, transform string) *url.URL {
-	if img.Empty() {
-		return new(url.URL)
-	}
-
-	return &url.URL{
-		Scheme: "https",
-		Host:   "res.cloudinary.com",
-		Path: path.Join(
-			"dawfgqsur",
-			"image",
-			"authenticated",
-			svc.deliverySignature(img, transform),
-			img.Path(transform)),
-	}
-}
-
-const insertImageQuery = `
-INSERT INTO images (public_id, format)
-VALUES ($1, $2)
-ON CONFLICT DO NOTHING
-`
-
-func (svc Service) InsertImage(publicID, format string) error {
-	_, err := svc.db.Exec(insertImageQuery, publicID, format)
-	return err
-}
-
-const updateImageQuery = `
-UPDATE images
-SET
-	status = $2,
-	updated = NOW()
-WHERE public_id = $1
-`
-
-func (svc Service) UpdateImage(publicID, status string) error {
-	_, err := svc.db.Exec(updateImageQuery, publicID, status)
-	return err
-}
 
 type postSignatureRequest struct {
 	Parameters map[string]string `json:"parameters"`
@@ -144,7 +23,7 @@ type postSignatureResponse struct {
 	Signature string `json:"signature"`
 }
 
-func postSignatureEndpoint(svc Service) endpoint.Endpoint {
+func postSignatureEndpoint(cloudinary services.Cloudinary) endpoint.Endpoint {
 	return func(_ context.Context, request interface{}) (interface{}, error) {
 		parameters := request.(postSignatureRequest).Parameters
 		// Only allow uploads using the "manualsmap_com" preset. If any
@@ -153,7 +32,7 @@ func postSignatureEndpoint(svc Service) endpoint.Endpoint {
 		if _, ok := parameters["upload_preset"]; ok {
 			parameters["upload_preset"] = "manualsmap_com"
 		}
-		signature := svc.UploadSignature(parameters)
+		signature := cloudinary.UploadSignature(parameters)
 
 		return postSignatureResponse{Signature: signature}, nil
 	}
@@ -173,9 +52,11 @@ func postSignatureDecoder(_ context.Context, r *http.Request) (interface{}, erro
 	return req, nil
 }
 
-func PostSignatureHandler(svc Service) http.Handler {
+func PostSignatureHandler(cloudinary services.Cloudinary) http.Handler {
 	return httptransport.NewServer(
-		postSignatureEndpoint(svc),
+		// TODO: Require reCAPTCHA validation before generating an upload signature.
+		// middlewares.RecaptchaValidator()(postSignatureEndpoint(cloudinary)),
+		postSignatureEndpoint(cloudinary),
 		postSignatureDecoder,
 		encoders.JSONResponseEncoder,
 	)
@@ -190,7 +71,7 @@ type postNotificationRequest struct {
 
 type postNotificationResponse struct{}
 
-func postNotificationEndpoint(svc Service) endpoint.Endpoint {
+func postNotificationEndpoint(persistence services.Persistence) endpoint.Endpoint {
 	logErr := func(err error) {
 		log.Printf("[postNotificationEndpoint] ERROR: %s: ", err)
 	}
@@ -200,11 +81,11 @@ func postNotificationEndpoint(svc Service) endpoint.Endpoint {
 		switch r.NotificationType {
 		case "upload":
 			err = errors.WithMessage(
-				svc.InsertImage(r.PublicID, r.Format),
+				persistence.InsertImage(r.PublicID, r.Format),
 				"error inserting image")
 		case "moderation":
 			err = errors.WithMessage(
-				svc.UpdateImage(r.PublicID, r.ModerationStatus),
+				persistence.UpdateImage(r.PublicID, r.ModerationStatus),
 				"error updating image")
 		}
 
@@ -220,7 +101,9 @@ func postNotificationEndpoint(svc Service) endpoint.Endpoint {
 	}
 }
 
-func postNotificationDecoder(svc Service) httptransport.DecodeRequestFunc {
+func postNotificationDecoder(
+	cloudinary services.Cloudinary,
+) httptransport.DecodeRequestFunc {
 	logErr := func(err error) {
 		log.Printf("[postNotificationDecoder] ERROR: %s", err)
 	}
@@ -238,7 +121,7 @@ func postNotificationDecoder(svc Service) httptransport.DecodeRequestFunc {
 
 		// Validate the Cloudinary notification signature.
 		timestamp := r.Header.Get("x-cld-timestamp")
-		expectedSig := svc.NotificationSignature(string(body), timestamp)
+		expectedSig := cloudinary.NotificationSignature(string(body), timestamp)
 		actualSig := r.Header.Get("x-cld-signature")
 		if expectedSig != actualSig {
 			msg := "signature does not match expected"
@@ -262,10 +145,13 @@ func postNotificationDecoder(svc Service) httptransport.DecodeRequestFunc {
 	}
 }
 
-func PostNotificationHandler(svc Service) http.Handler {
+func PostNotificationHandler(
+	persistence services.Persistence,
+	cloudinary services.Cloudinary,
+) http.Handler {
 	return httptransport.NewServer(
-		postNotificationEndpoint(svc),
-		postNotificationDecoder(svc),
+		postNotificationEndpoint(persistence),
+		postNotificationDecoder(cloudinary),
 		func(_ context.Context, writer http.ResponseWriter, _ interface{}) error {
 			writer.WriteHeader(http.StatusOK)
 			return nil

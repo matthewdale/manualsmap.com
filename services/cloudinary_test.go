@@ -1,4 +1,4 @@
-package images
+package services
 
 import (
 	"net/url"
@@ -8,7 +8,7 @@ import (
 )
 
 func TestUploadSignature(t *testing.T) {
-	svc := NewService(nil, "abcd")
+	svc := NewCloudinary("abcd")
 	sig := svc.UploadSignature(map[string]string{
 		"timestamp": "1315060510",
 		"public_id": "sample_image",
@@ -21,7 +21,7 @@ func TestUploadSignature(t *testing.T) {
 		"Expected signatures to match")
 }
 func TestNotificationSignature(t *testing.T) {
-	svc := NewService(nil, "abcd")
+	svc := NewCloudinary("abcd")
 	body := `{"public_id":"djhoeaqcynvogt9xzbn9","version":1368881626,"width":864,"height":576,"format":"jpg","resource_type":"image","created_at":"2013-05-18T12:53:46Z","bytes":120253,"type":"upload","url":"https://res.cloudinary.com/1233456ab/image/upload/v1368881626/djhoeaqcynvogt9xzbn9.jpg","secure_url":"https://cloudinary-a.akamaihd.net/1233456ab/image/upload/v1368881626/djhoeaqcynvogt9xzbn9.jpg"}`
 	timestamp := "1368881627"
 	sig := svc.NotificationSignature(body, timestamp)
@@ -33,8 +33,8 @@ func TestNotificationSignature(t *testing.T) {
 }
 
 func TestDeliverySignature(t *testing.T) {
-	svc := NewService(nil, "abcd")
-	img := Image{
+	svc := NewCloudinary("abcd")
+	img := CloudinaryImage{
 		PublicID: "sample",
 		Format:   "png",
 	}
@@ -50,13 +50,13 @@ func TestDeliverySignature(t *testing.T) {
 func TestURL(t *testing.T) {
 	tests := []struct {
 		description string
-		img         Image
+		img         CloudinaryImage
 		transform   string
 		expected    *url.URL
 	}{
 		{
 			description: "Cloudinary documentation example",
-			img: Image{
+			img: CloudinaryImage{
 				PublicID: "sample",
 				Format:   "png",
 			},
@@ -69,7 +69,7 @@ func TestURL(t *testing.T) {
 		},
 		{
 			description: "Should work with no transform",
-			img: Image{
+			img: CloudinaryImage{
 				PublicID: "sample",
 				Format:   "png",
 			},
@@ -81,7 +81,7 @@ func TestURL(t *testing.T) {
 			},
 		},
 	}
-	svc := NewService(nil, "abcd")
+	svc := NewCloudinary("abcd")
 
 	for _, test := range tests {
 		test := test // Capture range variable.

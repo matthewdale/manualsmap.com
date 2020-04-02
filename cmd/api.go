@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/matthewdale/manualsmap.com/services"
+
 	"github.com/alecthomas/kong"
 	"github.com/dpapathanasiou/go-recaptcha"
 	"github.com/gorilla/mux"
@@ -61,14 +63,14 @@ func main() {
 		log.Fatal("Error connecting to Postgres DB", err)
 	}
 
-	imagesSvc := images.NewService(db, opts.CloudinarySecret)
-	router.Methods("POST").Path("/images/signature").Handler(images.PostSignatureHandler(imagesSvc))
-	router.Methods("POST").Path("/images/notification").Handler(images.PostNotificationHandler(imagesSvc))
+	persistence := services.NewPersistence(db, []byte(opts.LicenseSalt))
+	cloudinary := services.NewCloudinary(opts.CloudinarySecret)
+	router.Methods("POST").Path("/images/signature").Handler(images.PostSignatureHandler(cloudinary))
+	router.Methods("POST").Path("/images/notification").Handler(images.PostNotificationHandler(persistence, cloudinary))
 
-	mapBlocksSvc := mapblocks.NewService(db, []byte(opts.LicenseSalt))
-	router.Methods("GET").Path("/mapblocks").Handler(mapblocks.GetHandler(mapBlocksSvc))
-	router.Methods("GET").Path("/mapblocks/{id}/cars").Handler(mapblocks.GetCarsHandler(mapBlocksSvc, imagesSvc))
-	router.Methods("POST").Path("/cars").Handler(mapblocks.PostCarsHandler(mapBlocksSvc))
+	router.Methods("GET").Path("/mapblocks").Handler(mapblocks.GetHandler(persistence))
+	router.Methods("GET").Path("/mapblocks/{id}/cars").Handler(mapblocks.GetCarsHandler(persistence, cloudinary))
+	router.Methods("POST").Path("/cars").Handler(mapblocks.PostCarsHandler(persistence))
 
 	// TODO: Remove or replace?
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("public")))

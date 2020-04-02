@@ -2,7 +2,6 @@ package mapblocks
 
 import (
 	"context"
-	"database/sql"
 	"net/http"
 
 	"github.com/go-kit/kit/endpoint"
@@ -11,117 +10,30 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/matthewdale/manualsmap.com/encoders"
+	"github.com/matthewdale/manualsmap.com/services"
 )
 
-type Service struct {
-	db   *sql.DB
-	salt []byte
-}
-
-func NewService(db *sql.DB, salt []byte) Service {
-	return Service{db: db, salt: salt}
-}
-
-type MapBlock struct {
-	ID        int     `json:"id"`
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
-}
-
-// TODO: Adjust limit.
-const getMapBlocksQuery = `
-SELECT
-	id, latitude, longitude
-FROM map_blocks
-WHERE
-	latitude BETWEEN TRUNC($1, 2)-0.1 AND TRUNC($2, 2)+0.1
-	AND longitude BETWEEN TRUNC($3, 2)-0.1 AND TRUNC($4, 2)+0.1
-LIMIT 100
-`
-
-func (svc Service) GetMapBlocks(
-	minLatitude,
-	minLongitude,
-	maxLatitude,
-	maxLongitude float64,
-) ([]MapBlock, error) {
-	rows, err := svc.db.Query(
-		getMapBlocksQuery,
-		minLatitude,
-		maxLatitude,
-		minLongitude,
-		maxLongitude)
-	if err != nil {
-		return nil, errors.WithMessage(err, "failed to read map blocks")
-	}
-	blocks := make([]MapBlock, 0, 10)
-
-	for rows.Next() {
-		var block MapBlock
-		err := rows.Scan(
-			&block.ID,
-			&block.Latitude,
-			&block.Longitude)
-		if err != nil {
-			return nil, errors.WithMessage(err, "failed to scan map block row into struct")
-		}
-		blocks = append(blocks, block)
-	}
-	return blocks, nil
-}
-
-const getMapBlockQuery = `
-SELECT
-	id, latitude, longitude
-FROM map_blocks
-WHERE
-	latitude = TRUNC($1, 2)
-	AND longitude = TRUNC($2, 2)
-`
-
-func (svc Service) GetMapBlock(latitude, longitude float64) (*MapBlock, error) {
-	var block MapBlock
-	err := svc.db.QueryRow(getMapBlockQuery, latitude, longitude).Scan(
-		&block.ID,
-		&block.Longitude,
-		&block.Latitude,
-	)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, errors.WithMessage(err, "failed to read map blocks")
-	}
-	return &block, nil
-}
-
-// TODO: Adjust map block size. Consider 0.02 instead of 0.01
-const insertMapBlockQuery = `
-INSERT INTO map_blocks (latitude, longitude)
-VALUES (TRUNC($1, 2), TRUNC($2, 2))
-ON CONFLICT DO NOTHING
-`
-
-func (svc Service) InsertMapBlock(latitude, longitude float64) error {
-	_, err := svc.db.Exec(insertMapBlockQuery, latitude, longitude)
-	return err
-}
-
-type getRequest struct {
+type getMapBlocksRequest struct {
 	MinLatitude  float64 `schema:"min_latitude"`
 	MinLongitude float64 `schema:"min_longitude"`
 	MaxLatitude  float64 `schema:"max_latitude"`
 	MaxLongitude float64 `schema:"max_longitude"`
 }
 
-type getResponse struct {
-	MapBlocks []MapBlock `json:"mapBlocks"`
+type mapBlock struct {
+	ID        int     `json:"id"`
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
 }
 
-func getEndpoint(svc Service) endpoint.Endpoint {
+type getMapBlocksResponse struct {
+	MapBlocks []mapBlock `json:"mapBlocks"`
+}
+
+func getEndpoint(persistence services.Persistence) endpoint.Endpoint {
 	return func(_ context.Context, request interface{}) (interface{}, error) {
-		r := request.(getRequest)
-		mapBlocks, err := svc.GetMapBlocks(
+		r := request.(getMapBlocksRequest)
+		mapBlocks, err := persistence.GetMapBlocks(
 			r.MinLatitude,
 			r.MinLongitude,
 			r.MaxLatitude,
@@ -131,20 +43,28 @@ func getEndpoint(svc Service) endpoint.Endpoint {
 				errors.WithMessage(err, "error getting map block"),
 				http.StatusInternalServerError)
 		}
-		return getResponse{MapBlocks: mapBlocks}, nil
+		responseBlocks := make([]mapBlock, 0, len(mapBlocks))
+		for _, block := range mapBlocks {
+			responseBlocks = append(responseBlocks, mapBlock{
+				ID:        block.ID,
+				Latitude:  block.Latitude,
+				Longitude: block.Longitude,
+			})
+		}
+		return getMapBlocksResponse{MapBlocks: responseBlocks}, nil
 	}
 }
 
 func getDecode(_ context.Context, r *http.Request) (interface{}, error) {
-	var req getRequest
+	var req getMapBlocksRequest
 	decoder := schema.NewDecoder()
 	decoder.Decode(&req, r.URL.Query())
 	return req, nil
 }
 
-func GetHandler(svc Service) http.Handler {
+func GetHandler(persistence services.Persistence) http.Handler {
 	return httptransport.NewServer(
-		getEndpoint(svc),
+		getEndpoint(persistence),
 		getDecode,
 		encoders.JSONResponseEncoder,
 	)

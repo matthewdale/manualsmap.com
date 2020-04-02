@@ -2,142 +2,24 @@ package mapblocks
 
 import (
 	"context"
-	"database/sql"
-	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
-	"regexp"
 	"strconv"
-	"strings"
 
-	"github.com/dpapathanasiou/go-recaptcha"
 	"github.com/go-kit/kit/endpoint"
 	httptransport "github.com/go-kit/kit/transport/http"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/xeipuuv/gojsonschema"
-	"golang.org/x/crypto/scrypt"
 
 	"github.com/matthewdale/manualsmap.com/encoders"
-	"github.com/matthewdale/manualsmap.com/handlers/images"
+	"github.com/matthewdale/manualsmap.com/middlewares"
+	"github.com/matthewdale/manualsmap.com/services"
 )
-
-type Car struct {
-	Year  int
-	Brand string
-	Model string
-	Trim  string
-	Color string
-	Image images.Image
-}
-
-// TODO: Fetch additional columns, order by created descending,
-// and paginate.
-const getCarsQuery = `
-SELECT
-	c.year,
-	c.brand,
-	c.model,
-	c.trim,
-	c.color,
-	i.public_id,
-	i.format
-FROM cars c
-LEFT JOIN images i ON
-	i.public_id = c.images_public_id
-	AND i.status = 'approved'
-WHERE c.map_block_id = $1
-ORDER BY c.created DESC
-`
-
-func (svc Service) GetCars(mapBlockID int) ([]Car, error) {
-	rows, err := svc.db.Query(getCarsQuery, mapBlockID)
-	if err != nil {
-		return nil, errors.WithMessage(err, "failed to read cars")
-	}
-	cars := make([]Car, 0, 10)
-	for rows.Next() {
-		var car Car
-		var publicID sql.NullString
-		var format sql.NullString
-		err := rows.Scan(
-			&car.Year,
-			&car.Brand,
-			&car.Model,
-			&car.Trim,
-			&car.Color,
-			&publicID,
-			&format)
-		if err != nil {
-			return nil, errors.WithMessage(err, "failed to scan car row into struct")
-		}
-		// TODO: If the image is awaiting moderation, add an "awaiting moderation" image.
-		// TODO: If there is no image, add a stock photo.
-		if publicID.Valid && format.Valid {
-			car.Image.PublicID = publicID.String
-			car.Image.Format = format.String
-		}
-		cars = append(cars, car)
-	}
-	return cars, nil
-}
-
-var nonAlphanumeric = regexp.MustCompile(`[^\w\d]`)
-
-func (svc Service) licenseHash(licenseState, licensePlate string) (string, error) {
-	license := []byte(fmt.Sprintf("%s-%s",
-		strings.ToUpper(strings.TrimSpace(licenseState)),
-		strings.ToUpper(nonAlphanumeric.ReplaceAllString(licensePlate, ""))))
-	hash, err := scrypt.Key(license, svc.salt, 1<<15, 8, 1, 32)
-	if err != nil {
-		return "", err
-	}
-	return base64.StdEncoding.EncodeToString(hash), nil
-}
-
-const insertCarQuery = `
-INSERT INTO cars(
-	license_hash,
-	map_block_id,
-	year,
-	brand,
-	model,
-	trim,
-	color,
-	images_public_id
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-`
-
-func (svc Service) InsertCar(
-	licenseHash string,
-	mapBlockID,
-	year int,
-	brand,
-	model,
-	trim,
-	color,
-	imagePublicID string,
-) error {
-	_, err := svc.db.Exec(
-		insertCarQuery,
-		licenseHash,
-		mapBlockID,
-		year,
-		strings.TrimSpace(brand),
-		strings.TrimSpace(model),
-		strings.TrimSpace(trim),
-		strings.ToLower(strings.TrimSpace(color)),
-		strings.TrimSpace(imagePublicID))
-	if err != nil {
-		return errors.WithMessage(err, "failed to insert car")
-	}
-	return nil
-}
 
 type getCarsRequest struct {
 	mapBlockID int
@@ -157,9 +39,9 @@ type getCarsResponse struct {
 	Cars []carResponse `json:"cars"`
 }
 
-func getCarsEndpoint(svc Service, imagesSvc images.Service) endpoint.Endpoint {
+func getCarsEndpoint(persistence services.Persistence, cloudinary services.Cloudinary) endpoint.Endpoint {
 	return func(_ context.Context, request interface{}) (interface{}, error) {
-		cars, err := svc.GetCars(request.(getCarsRequest).mapBlockID)
+		cars, err := persistence.GetCars(request.(getCarsRequest).mapBlockID)
 		if err != nil {
 			return nil, encoders.NewJSONError(
 				errors.WithMessage(err, "error getting car"),
@@ -174,17 +56,17 @@ func getCarsEndpoint(svc Service, imagesSvc images.Service) endpoint.Endpoint {
 				Model:        car.Model,
 				Trim:         car.Trim,
 				Color:        car.Color,
-				ImageURL:     imagesSvc.URL(car.Image, "").String(),
-				ThumbnailURL: imagesSvc.URL(car.Image, "c_limit,w_300").String(),
+				ImageURL:     cloudinary.URL(car.Image, "").String(),
+				ThumbnailURL: cloudinary.URL(car.Image, "c_limit,w_300").String(),
 			})
 		}
 		return getCarsResponse{Cars: carResponses}, nil
 	}
 }
 
-func GetCarsHandler(svc Service, imagesSvc images.Service) http.Handler {
+func GetCarsHandler(persistence services.Persistence, cloudinary services.Cloudinary) http.Handler {
 	return httptransport.NewServer(
-		getCarsEndpoint(svc, imagesSvc),
+		getCarsEndpoint(persistence, cloudinary),
 		func(_ context.Context, r *http.Request) (interface{}, error) {
 			vars := mux.Vars(r)
 			id, ok := vars["id"]
@@ -218,10 +100,6 @@ type postCarsRequest struct {
 	Recaptcha          string  `json:"recaptcha"`
 	CloudinaryPublicID string  `json:"cloudinaryPublicId"`
 	remoteIP           string
-}
-
-type postCarsResponse struct {
-	LicenseHash string `json:"license_hash"`
 }
 
 var postCarsRequestSchema *gojsonschema.Schema
@@ -294,30 +172,11 @@ func init() {
 	}
 }
 
-func postCarsEndpoint(svc Service) endpoint.Endpoint {
+func postCarsEndpoint(persistence services.Persistence) endpoint.Endpoint {
 	return func(_ context.Context, request interface{}) (interface{}, error) {
 		r := request.(postCarsRequest)
 
-		// reCAPTCHA form validation.
-		valid, err := recaptcha.Confirm(r.remoteIP, r.Recaptcha)
-		if err != nil {
-			return nil, encoders.NewJSONError(
-				errors.WithMessage(err, "reCAPTCHA server error"),
-				http.StatusInternalServerError)
-		}
-		if !valid {
-			return nil, encoders.NewJSONError(
-				errors.New("reCAPTCHA validation failed"),
-				http.StatusForbidden)
-		}
-
-		hash, err := svc.licenseHash(r.LicenseState, r.LicensePlate)
-		if err != nil {
-			return nil, encoders.NewJSONError(
-				errors.WithMessage(err, "error generating license hash"),
-				http.StatusInternalServerError)
-		}
-		block, err := svc.GetMapBlock(r.Latitude, r.Longitude)
+		block, err := persistence.GetMapBlock(r.Latitude, r.Longitude)
 		if err != nil {
 			return nil, encoders.NewJSONError(
 				errors.WithMessage(err, "error getting map block"),
@@ -326,20 +185,21 @@ func postCarsEndpoint(svc Service) endpoint.Endpoint {
 		// TODO: Do these in a transaction so it can be rolled back in case there's a
 		// duplicate key constraint inserting the car.
 		if block == nil {
-			if err := svc.InsertMapBlock(r.Latitude, r.Longitude); err != nil {
+			if err := persistence.InsertMapBlock(r.Latitude, r.Longitude); err != nil {
 				return nil, encoders.NewJSONError(
 					errors.WithMessage(err, "error inserting map block"),
 					http.StatusInternalServerError)
 			}
-			block, err = svc.GetMapBlock(r.Latitude, r.Longitude)
+			block, err = persistence.GetMapBlock(r.Latitude, r.Longitude)
 			if err != nil {
 				return nil, encoders.NewJSONError(
 					errors.WithMessage(err, "error getting map block"),
 					http.StatusInternalServerError)
 			}
 		}
-		err = svc.InsertCar(
-			hash,
+		err = persistence.InsertCar(
+			r.LicenseState,
+			r.LicensePlate,
 			block.ID,
 			r.Year,
 			r.Brand,
@@ -353,7 +213,8 @@ func postCarsEndpoint(svc Service) endpoint.Endpoint {
 				errors.WithMessage(err, "error inserting car"),
 				http.StatusInternalServerError)
 		}
-		return postCarsResponse{LicenseHash: hash}, nil
+
+		return "", nil
 	}
 }
 
@@ -401,9 +262,9 @@ func postCarsDecoder(_ context.Context, r *http.Request) (interface{}, error) {
 	return req, nil
 }
 
-func PostCarsHandler(svc Service) http.Handler {
+func PostCarsHandler(persistence services.Persistence) http.Handler {
 	return httptransport.NewServer(
-		postCarsEndpoint(svc),
+		middlewares.RecaptchaValidator()(postCarsEndpoint(persistence)),
 		postCarsDecoder,
 		encoders.JSONResponseEncoder,
 	)
