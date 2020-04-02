@@ -52,11 +52,15 @@ func main() {
 	if err != nil {
 		log.Fatal("Error reading secret key", err)
 	}
-	mapkitSvc, err := mapkit.NewService(opts.AppleTeamID, opts.MapkitKeyID, mapkitSecret, opts.MapkitOrigin)
+	appleMapkit, err := services.NewAppleMapkit(
+		opts.AppleTeamID,
+		opts.MapkitKeyID,
+		mapkitSecret,
+		opts.MapkitOrigin)
 	if err != nil {
 		log.Fatal("Error parsing private key PEM file", err)
 	}
-	router.Methods("GET").Path("/mapkit/token").Handler(mapkit.GetTokenHandler(mapkitSvc))
+	router.Methods("GET").Path("/mapkit/token").Handler(mapkit.GetTokenHandler(appleMapkit))
 
 	db, err := sql.Open("postgres", opts.PSQLConn)
 	if err != nil {
