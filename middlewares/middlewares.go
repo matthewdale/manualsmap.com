@@ -10,8 +10,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-type RecaptchaRequest interface {
-	Recaptcha() string
+type RecaptchaValidatedRequest interface {
+	RecaptchaResponse() string
 	RemoteIP() string
 }
 
@@ -21,8 +21,8 @@ func RecaptchaValidator() endpoint.Middleware {
 			// Do an unchecked type assertion here. If the type assertion fails,
 			// the call will panic, which is OK because it's better than completely
 			// skipping request validation.
-			r := request.(RecaptchaRequest)
-			valid, err := recaptcha.Confirm(r.RemoteIP(), r.Recaptcha())
+			r := request.(RecaptchaValidatedRequest)
+			valid, err := recaptcha.Confirm(r.RemoteIP(), r.RecaptchaResponse())
 			if err != nil {
 				return nil, encoders.NewJSONError(
 					errors.WithMessage(err, "reCAPTCHA server error"),

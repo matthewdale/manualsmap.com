@@ -17,51 +17,19 @@ mapkit.init({
     }
 });
 
-function generateSignature(callback, parameters) {
-    // Convert all of the parameters to strings to match the
-    // /images/signatures API.
-    let strParameters = {};
-    for (let key in parameters) {
-        strParameters[key] = parameters[key].toString();
-    }
-    let options = {
-        method: "POST",
-        body: JSON.stringify({ parameters: strParameters }),
-        headers: {
-            "Content-Type": "application/json",
-        },
-    };
-    fetch("/images/signature", options)
-        .then(res => res.json())
-        .then(result => {
-            // TODO: What about on failure?
-            callback(result.signature);
-        });
-}
-
-var imageUploadCallback;
-var cloudinaryUploadInfo;
-var cloudinaryUploadWidget = cloudinary.createUploadWidget({
-    cloudName: "dawfgqsur",
-    apiKey: 263238496553624,
-    uploadPreset: "manualsmap_com",
-    uploadSignature: generateSignature,
-    sources: ["local", "url", "camera"],
-}, (error, result) => {
-    // TODO: Figure out how to get this result into the POST /cars form.
-    if (!error && result && result.event === "success") {
-        console.log("Done! Here is the image info: ", result.info);
-        imageUploadCallback(result.info);
-        cloudinaryUploadInfo = result.info;
-    }
-});
-
 var map = new mapkit.Map("map", {
     // TODO: Is there any way to get rid of the user location overlay?
     showsUserLocation: false,
     tracksUserLocation: true,
     showsUserLocationControl: true,
 });
+
+function handleErrors(response) {
+    if (!response.ok) {
+        throw Error(response.statusText);
+    }
+    return response;
+}
 
 function displayPrivacyNotice() {
     alert("PRIVACY!");
@@ -95,104 +63,154 @@ function search(query) {
 
 
 //////// Add Car ////////
-function renderRecaptcha() {
-    grecaptcha.render("recaptcha", {
-        "sitekey": "6Ld5i-MUAAAAAMAIZ1my_sonpYAECKc4UIdiIvhQ",
-        "theme": "light",
-    });
+function addCarModal(options) {
+    $("#addCarModal").modal(options);
 }
 
-var CALLOUT_OFFSET = new DOMPoint(-148, -78);
 var newCarAnnotation = null;
-function addCar() {
+function placeOnMap() {
     if (newCarAnnotation) {
         map.removeAnnotation(newCarAnnotation);
     }
-    let form = $("#addCarFormTemplate").clone();
-    form.prop("id", "addCarForm");
-
-    // Add and render reCAPTCHA checkbox.
-    let recaptcha = $(`<div id="recaptcha"></div>`);
-    let script = document.createElement("script");
-    script.appendChild(document.createTextNode("renderRecaptcha();"));
-    form.find("#recaptcha").before(recaptcha);
-    form.find("#recaptcha").before(script);
-
-    // Hook up the Cloudinary image upload widget to the
-    // add/remove image buttons.
-    form.find("#cloudinary").on("click", function () {
-        cloudinaryUploadWidget.open();
-        return false;
-    });
-    form.find("#removeImage").on("click", function () {
-        form.find("#image").prop("src", "");
-        cloudinaryUploadInfo = null;
-        form.find("#cloudinary").show();
-        form.find("#removeImage").hide();
-    });
-    imageUploadCallback = function (uploadInfo) {
-        form.find("#image").prop("src", uploadInfo.secure_url);
-        form.find("#cloudinary").hide();
-        form.find("#removeImage").show();
-    };
-
-    form.on("submit", function (event) {
-        // TODO: Form validation.
-        let form = event.target;
-        let data = {
-            year: Number(form["year"].value),
-            brand: form["brand"].value,
-            model: form["model"].value,
-            trim: form["trim"].value,
-            color: form["color"].value,
-            licenseState: form["licenseState"].value,
-            licensePlate: form["licensePlate"].value,
-            latitude: newCarAnnotation.coordinate.latitude,
-            longitude: newCarAnnotation.coordinate.longitude,
-            recaptcha: grecaptcha.getResponse(),
-        };
-        if (cloudinaryUploadInfo) {
-            data.cloudinaryPublicId = cloudinaryUploadInfo.public_id;
-        }
-        let options = {
-            method: "POST",
-            body: JSON.stringify(data),
-            headers: {
-                "Content-Type": "application/json",
-            },
-        };
-        fetch("/cars", options)
-            .then(res => res.json())
-            .then(result => {
-                console.log(result)
-                // TODO: What about on failure?
-                fetchVisibleOverlays();
-            });
-
-        map.removeAnnotation(newCarAnnotation);
-        newCarAnnotation = null;
-        return false;
-    })
-    let callout = {
-        calloutElementForAnnotation: function (annotation) {
-            let div = $(`<div></div>`)
-            div.append(form.get(0));
-
-            return div.get(0);
-        },
-        calloutAnchorOffsetForAnnotation: function (annotation, element) {
-            return CALLOUT_OFFSET;
-        },
-        calloutAppearanceAnimationForAnnotation: function (annotation) {
-            return "scale-and-fadein .4s 0 1 normal cubic-bezier(0.4, 0, 0, 1.5)";
-        },
-    };
     newCarAnnotation = new mapkit.MarkerAnnotation(map.center, {
         draggable: true,
-        title: "Click me! (click and hold to reposition)",
-        callout: callout,
+        calloutEnabled: false,
+        title: "Click and hold to position",
+        titleVisibility: "visible",
+    });
+    newCarAnnotation.addEventListener("drag-end", function(event) {
+        addCarModal("show");
     });
     map.addAnnotation(newCarAnnotation);
+}
+
+var cloudinaryUploadInfo;
+const cloudinaryCloudName = "dawfgqsur";
+const cloudinaryUploadPreset = "manualsmap_com";
+function addImage(token) {
+    let timestamp = Math.round((new Date()).getTime() / 1000);
+    let options = {
+        method: "POST",
+        body: JSON.stringify({
+            parameters: {
+                source: "uw",
+                timestamp: timestamp.toString(),
+                upload_preset: cloudinaryUploadPreset,
+            },
+            recaptcha: token,
+        }),
+        headers: {
+            "Content-Type": "application/json",
+        },
+    };
+    fetch("/images/signature", options)
+        .then(res => {
+            handleErrors(res);
+            return res.json();
+        })
+        .then(result => {
+            var widget = cloudinary.createUploadWidget({
+                cloudName: cloudinaryCloudName,
+                apiKey: 263238496553624,
+                uploadPreset: cloudinaryUploadPreset,
+                uploadSignature: result.signature,
+                uploadSignatureTimestamp: timestamp,
+                sources: ["local", "url", "camera"],
+                multiple: false,
+            }, (error, result) => {
+                if (!error && result && result.event === "success") {
+                    console.log("Done! Here is the image info: ", result.info);
+                    cloudinaryUploadInfo = result.info;
+
+                    let form = $("#addCar");
+                    form.find("#image").prop("src", cloudinaryUploadInfo.secure_url);
+
+                    let addImage = form.find("#addImage");
+                    addImage.hide();
+
+                    let removeImage = form.find("#removeImage");
+                    removeImage.show();
+                    removeImage.on("click", function () {
+                        deleteImage(cloudinaryUploadInfo.delete_token);
+                        cloudinaryUploadInfo = null;
+                        form.find("#image").prop("src", "");
+                        form.find("#addImage").show();
+                        form.find("#removeImage").hide();
+                    });
+                }
+            });
+            widget.open();
+        }).catch(error => {
+            alert("Failed to sign upload: " + error);
+        });
+}
+
+function deleteImage(token) {
+    let options = {
+        method: "POST",
+        body: "token=" + encodeURIComponent(token),
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+    };
+    fetch(`https://api.cloudinary.com/v1_1/${cloudinaryCloudName}/delete_by_token`, options);
+}
+
+function resetAddCarForm() {
+    let form = $("#addCar");
+    let formEl = form.get(0);
+    formEl["licenseState"].selectedIndex = 0;
+    formEl["licensePlate"].value = "";
+    formEl["year"].value = "";
+    formEl["brand"].value = "";
+    formEl["model"].value = "";
+    formEl["trim"].value = "";
+    formEl["color"].value = "";
+
+    form.find("#image").prop("src", "");
+    form.find("#addImage").show();
+    form.find("#removeImage").hide();
+}
+
+function submitCar(token) {
+    // TODO: Form validation.
+    let formEl = $("#addCar").get(0);
+    let data = {
+        licenseState: formEl["licenseState"].value,
+        licensePlate: formEl["licensePlate"].value,
+        year: Number(formEl["year"].value),
+        brand: formEl["brand"].value,
+        model: formEl["model"].value,
+        trim: formEl["trim"].value,
+        color: formEl["color"].value,
+        latitude: newCarAnnotation.coordinate.latitude,
+        longitude: newCarAnnotation.coordinate.longitude,
+        recaptcha: token,
+    };
+    if (cloudinaryUploadInfo) {
+        data.cloudinaryPublicId = cloudinaryUploadInfo.public_id;
+    }
+    let options = {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: {
+            "Content-Type": "application/json",
+        },
+    };
+    fetch("/cars", options)
+        .then(res => {
+            handleErrors(res);
+            return res.json();
+        })
+        .then(_ => {
+            addCarModal("hide");
+            fetchVisibleOverlays();
+        }).catch(error => {
+            alert("Failed to add car: " + error);
+        });
+
+    map.removeAnnotation(newCarAnnotation);
+    newCarAnnotation = null;
 }
 
 var addCarOverlay = null;

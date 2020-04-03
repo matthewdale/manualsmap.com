@@ -6,17 +6,29 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 
 	"github.com/go-kit/kit/endpoint"
 	httptransport "github.com/go-kit/kit/transport/http"
 	"github.com/matthewdale/manualsmap.com/encoders"
+	"github.com/matthewdale/manualsmap.com/middlewares"
 	"github.com/matthewdale/manualsmap.com/services"
 	"github.com/pkg/errors"
 )
 
 type postSignatureRequest struct {
 	Parameters map[string]string `json:"parameters"`
+	Recaptcha  string            `json:"recaptcha"`
+	remoteIP   string
+}
+
+func (req postSignatureRequest) RecaptchaResponse() string {
+	return req.Recaptcha
+}
+
+func (req postSignatureRequest) RemoteIP() string {
+	return req.remoteIP
 }
 
 type postSignatureResponse struct {
@@ -49,14 +61,19 @@ func postSignatureDecoder(_ context.Context, r *http.Request) (interface{}, erro
 			errors.WithMessage(err, "error unmarshalling JSON body"),
 			http.StatusInternalServerError)
 	}
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return nil, encoders.NewJSONError(
+			errors.WithMessage(err, "failed to get remote IP"),
+			http.StatusInternalServerError)
+	}
+	req.remoteIP = ip
 	return req, nil
 }
 
 func PostSignatureHandler(cloudinary services.Cloudinary) http.Handler {
 	return httptransport.NewServer(
-		// TODO: Require reCAPTCHA validation before generating an upload signature.
-		// middlewares.RecaptchaValidator()(postSignatureEndpoint(cloudinary)),
-		postSignatureEndpoint(cloudinary),
+		middlewares.RecaptchaValidator()(postSignatureEndpoint(cloudinary)),
 		postSignatureDecoder,
 		encoders.JSONResponseEncoder,
 	)

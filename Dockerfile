@@ -5,6 +5,8 @@ WORKDIR /go/src/github.com/matthewdale/manualsmap.com/
 COPY cmd cmd/
 COPY encoders encoders/
 COPY handlers handlers/
+COPY middlewares middlewares/
+COPY services services/
 COPY go.mod .
 COPY go.sum .
 

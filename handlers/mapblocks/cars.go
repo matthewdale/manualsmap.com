@@ -102,6 +102,14 @@ type postCarsRequest struct {
 	remoteIP           string
 }
 
+func (req postCarsRequest) RecaptchaResponse() string {
+	return req.Recaptcha
+}
+
+func (req postCarsRequest) RemoteIP() string {
+	return req.remoteIP
+}
+
 var postCarsRequestSchema *gojsonschema.Schema
 
 func init() {
