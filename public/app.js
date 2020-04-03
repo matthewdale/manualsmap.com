@@ -78,7 +78,7 @@ function placeOnMap() {
         title: "Click and hold to position",
         titleVisibility: "visible",
     });
-    newCarAnnotation.addEventListener("drag-end", function(event) {
+    newCarAnnotation.addEventListener("drag-end", function (event) {
         addCarModal("show");
     });
     map.addAnnotation(newCarAnnotation);
@@ -201,18 +201,33 @@ function submitCar(token) {
         .then(res => {
             handleErrors(res);
             return res.json();
-        })
-        .then(_ => {
+        }).then(result => {
             addCarModal("hide");
             resetAddCarForm();
+
+            map.removeOverlay(addCarOverlay);
+            addCarOverlay = null;
+            map.removeAnnotation(newCarAnnotation);
+            newCarAnnotation = null;
+
+            displayCars(result.mapBlockId);
             fetchVisibleOverlays();
         }).catch(error => {
             alert("Failed to add car: " + error);
         });
-
-    map.removeAnnotation(newCarAnnotation);
-    newCarAnnotation = null;
 }
+
+const mapBlockSize = 0.05;
+
+function segmentCoordinate(coordinate) {
+    return truncate(truncate(coordinate / mapBlockSize, 0) * mapBlockSize, 2);
+}
+
+// Based on https://code-examples.net/en/q/3fe40a
+function truncate(number, digits) {
+    var re = new RegExp('^-?\\d+(?:\.\\d{0,' + (digits || -1) + '})?');
+    return Number(number.toString().match(re)[0]);
+};
 
 var addCarOverlay = null;
 map.addEventListener("dragging", function (event) {
@@ -221,86 +236,90 @@ map.addEventListener("dragging", function (event) {
     }
     // TODO: Change color of add car overlay.
     addCarOverlay = mapBlockOverlay(
-        truncate(event.coordinate.latitude, 2),
-        truncate(event.coordinate.longitude, 2));
+        segmentCoordinate(event.coordinate.latitude),
+        segmentCoordinate(event.coordinate.longitude),
+        "#00FF7B");
     map.addOverlay(addCarOverlay);
 });
 
-// Based on https://code-examples.net/en/q/3fe40a
-function truncate(number, digits) {
-    var re = new RegExp('^-?\\d+(?:\.\\d{0,' + (digits || -1) + '})?');
-    return Number(number.toString().match(re)[0]);
-};
 
 //////// Display Cars ////////
-function displayCars(cars) {
-    // Convert each car into a Bootstrap card.
-    let cards = cars.map(car => {
-        let div = $("#carTemplate .car").clone();
-        div.find("#year").text(car.year);
-        div.find("#brand").text(car.brand);
-        div.find("#model").text(car.model);
-        div.find("#trim").text(car.trim);
-        div.find("#color").text(car.color);
+function displayCars(mapBlockId) {
+    fetch(`/mapblocks/${mapBlockId}/cars`)
+        .then(res => {
+            handleErrors(res);
+            return res.json();
+        })
+        .then(result => {
+            // Convert each car into a Bootstrap card.
+            let cards = result.cars.map(car => {
+                let div = $("#carTemplate .car").clone();
+                div.find("#year").text(car.year);
+                div.find("#brand").text(car.brand);
+                div.find("#model").text(car.model);
+                div.find("#trim").text(car.trim);
+                div.find("#color").text(car.color);
 
-        // TODO: Handle "awaiting moderation" or stock photo.
-        if (car.thumbnailUrl) {
-            div.find("#imageLink").prop("href", car.imageUrl);
-            div.find("#image").prop("src", car.thumbnailUrl);
-        } else {
-            div.find("#imageLink").remove();
-        }
+                // TODO: Handle "awaiting moderation" or stock photo.
+                if (car.thumbnailUrl) {
+                    div.find("#imageLink").prop("href", car.imageUrl);
+                    div.find("#image").prop("src", car.thumbnailUrl);
+                } else {
+                    div.find("#imageLink").remove();
+                }
 
-        return div;
-    });
+                return div;
+            });
 
-    // Build 3 columns of cards using Bootstrap columns.
-    let container = $("#cars");
-    container.html("");
+            // Build 3 columns of cards using Bootstrap columns.
+            let container = $("#cars");
+            container.html("");
 
-    let i = 0;
-    while (i < cards.length) {
-        let row = $(`<div class="row"></div>`);
-        let j = 0;
-        while (j < 3 && i < cards.length) {
-            let col = $(`<div class="col-md-4"></div>`)
-            col.append(cards[i]);
-            row.append(col);
-            i++;
-            j++;
-        }
-        container.append(row);
-    }
+            let i = 0;
+            while (i < cards.length) {
+                let row = $(`<div class="row"></div>`);
+                let j = 0;
+                while (j < 3 && i < cards.length) {
+                    let col = $(`<div class="col-md-4"></div>`)
+                    col.append(cards[i]);
+                    row.append(col);
+                    i++;
+                    j++;
+                }
+                container.append(row);
+            }
 
-    canvi.open();
+            canvi.open();
+        }).catch(error => {
+            alert("Failed to fetch cars: " + error);
+        });
 }
 
 
 //////// Display Map Blocks ////////
-var overlayStyle = new mapkit.Style({
-    fillColor: "#007bff",
-    fillOpacity: 0.3,
-    strokeColor: "#ff0000",
-    strokeOpacity: 0.5,
-    lineWidth: 1,
-    lineJoin: "round",
-    lineDash: [2, 2, 6, 2, 6, 2]
-});
-function mapBlockOverlay(latitude, longitude) {
+function mapBlockOverlay(latitude, longitude, color = "#007BFF") {
     // Determine if the offset should be positive or negative so
     // that the magnitude of the sum is always greater (i.e.
     // farther away from zero. This works in conjunction with
     // truncating the car longitude and latitude, which always
     // rounds toward zero.
-    let latOffset = 0.00999 * Math.sign(latitude);
-    let longOffset = 0.00999 * Math.sign(longitude);
+    let latOffset = 0.04999 * Math.sign(latitude);
+    let longOffset = 0.04999 * Math.sign(longitude);
     return new mapkit.PolygonOverlay([
         new mapkit.Coordinate(latitude, longitude),
         new mapkit.Coordinate(latitude, longitude + longOffset),
         new mapkit.Coordinate(latitude + latOffset, longitude + longOffset),
         new mapkit.Coordinate(latitude + latOffset, longitude),
     ], {
-        style: overlayStyle,
+        style: new mapkit.Style({
+            fillColor: color,
+            fillOpacity: 0.3,
+            strokeColor: "#FF0000",
+            strokeOpacity: 0.5,
+            lineWidth: 1,
+            lineJoin: "round",
+            lineDash: [2, 2, 6, 2, 6, 2]
+        }),
         visible: true,
         enabled: true,
     });
@@ -311,12 +330,7 @@ function buildOverlays(mapBlocks) {
         let overlay = mapBlockOverlay(block.latitude, block.longitude);
         overlay.data = { id: block.id };
         overlay.addEventListener("select", function (event) {
-            // TODO: Highlight selected overlay.
-            fetch(`/mapblocks/${event.target.data.id}/cars`)
-                .then(response => response.json())
-                .then(result => {
-                    displayCars(result.cars);
-                });
+            displayCars(event.target.data.id);
         });
         overlay.addEventListener("deselect", function (event) {
             // Figure out how to cancel the previous request or

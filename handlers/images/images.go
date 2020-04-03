@@ -169,9 +169,6 @@ func PostNotificationHandler(
 	return httptransport.NewServer(
 		postNotificationEndpoint(persistence),
 		postNotificationDecoder(cloudinary),
-		func(_ context.Context, writer http.ResponseWriter, _ interface{}) error {
-			writer.WriteHeader(http.StatusOK)
-			return nil
-		},
+		encoders.EmptyResponseEncoder,
 	)
 }

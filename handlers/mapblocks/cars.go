@@ -14,6 +14,7 @@ import (
 	httptransport "github.com/go-kit/kit/transport/http"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
+	"github.com/shopspring/decimal"
 	"github.com/xeipuuv/gojsonschema"
 
 	"github.com/matthewdale/manualsmap.com/encoders"
@@ -88,17 +89,17 @@ func GetCarsHandler(persistence services.Persistence, cloudinary services.Cloudi
 }
 
 type postCarsRequest struct {
-	Year               int     `json:"year"`
-	Brand              string  `json:"brand"`
-	Model              string  `json:"model"`
-	Trim               string  `json:"trim"`
-	Color              string  `json:"color"`
-	LicenseState       string  `json:"licenseState"`
-	LicensePlate       string  `json:"licensePlate"`
-	Latitude           float64 `json:"latitude"`
-	Longitude          float64 `json:"longitude"`
-	Recaptcha          string  `json:"recaptcha"`
-	CloudinaryPublicID string  `json:"cloudinaryPublicId"`
+	Year               int             `json:"year"`
+	Brand              string          `json:"brand"`
+	Model              string          `json:"model"`
+	Trim               string          `json:"trim"`
+	Color              string          `json:"color"`
+	LicenseState       string          `json:"licenseState"`
+	LicensePlate       string          `json:"licensePlate"`
+	Latitude           decimal.Decimal `json:"latitude"`
+	Longitude          decimal.Decimal `json:"longitude"`
+	Recaptcha          string          `json:"recaptcha"`
+	CloudinaryPublicID string          `json:"cloudinaryPublicId"`
 	remoteIP           string
 }
 
@@ -180,6 +181,10 @@ func init() {
 	}
 }
 
+type postCarsResponse struct {
+	MapBlockID int `json:"mapBlockId"`
+}
+
 func postCarsEndpoint(persistence services.Persistence) endpoint.Endpoint {
 	return func(_ context.Context, request interface{}) (interface{}, error) {
 		r := request.(postCarsRequest)
@@ -222,7 +227,7 @@ func postCarsEndpoint(persistence services.Persistence) endpoint.Endpoint {
 				http.StatusInternalServerError)
 		}
 
-		return "", nil
+		return postCarsResponse{MapBlockID: block.ID}, nil
 	}
 }
 

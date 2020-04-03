@@ -8,6 +8,15 @@ import (
 	httptransport "github.com/go-kit/kit/transport/http"
 )
 
+// EmptyResponseEncoder returns a response with code HTTP 200 and no body.
+func EmptyResponseEncoder(_ context.Context, writer http.ResponseWriter, _ interface{}) error {
+	writer.WriteHeader(http.StatusOK)
+	return nil
+}
+
+// JSONResponseEncoder returns a response with a JSON-serialized response body.
+// If the response implements httptransport.StatusCoder, the provided HTTP
+// status code is used, otherwise code HTTP 200 is used.
 func JSONResponseEncoder(_ context.Context, writer http.ResponseWriter, response interface{}) error {
 	if res, ok := response.(httptransport.StatusCoder); ok {
 		if code := res.StatusCode(); code > 0 {

@@ -11,6 +11,7 @@ require (
 	github.com/gorilla/schema v1.1.0
 	github.com/lib/pq v1.3.0
 	github.com/pkg/errors v0.9.1
+	github.com/shopspring/decimal v0.0.0-20200227202807-02e2044944cc
 	github.com/stretchr/testify v1.5.1
 	github.com/xeipuuv/gojsonschema v1.2.0
 	golang.org/x/crypto v0.0.0-20200323165209-0ec3e9974c59

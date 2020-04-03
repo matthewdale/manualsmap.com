@@ -8,22 +8,34 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/shopspring/decimal"
 	"golang.org/x/crypto/scrypt"
 )
 
+// Persistence is a service that provides persistence for all service data in a
+// SQL database.
 type Persistence struct {
 	db   *sql.DB
 	salt []byte
 }
 
+// NewPersistence creates a new Persistence service. The salt is used to
+// obfuscate the license plate information and must remain the same to detect
+// duplicate car entries.
 func NewPersistence(db *sql.DB, salt []byte) Persistence {
 	return Persistence{db: db, salt: salt}
 }
 
 type MapBlock struct {
 	ID        int
-	Latitude  float64
-	Longitude float64
+	Latitude  decimal.Decimal
+	Longitude decimal.Decimal
+}
+
+var mapBlockSize = decimal.NewFromFloat(0.05)
+
+func segmentCoordinate(coordinate decimal.Decimal) decimal.Decimal {
+	return coordinate.Div(mapBlockSize).Truncate(0).Mul(mapBlockSize)
 }
 
 // TODO: Adjust limit.
@@ -32,23 +44,25 @@ SELECT
 	id, latitude, longitude
 FROM map_blocks
 WHERE
-	latitude BETWEEN TRUNC($1, 2)-0.1 AND TRUNC($2, 2)+0.1
-	AND longitude BETWEEN TRUNC($3, 2)-0.1 AND TRUNC($4, 2)+0.1
+	latitude BETWEEN $1 AND $2
+	AND longitude BETWEEN $3 AND $4
 LIMIT 100
 `
+
+var coordinateOvershoot = decimal.NewFromFloat(0.5)
 
 func (svc Persistence) GetMapBlocks(
 	minLatitude,
 	minLongitude,
 	maxLatitude,
-	maxLongitude float64,
+	maxLongitude decimal.Decimal,
 ) ([]MapBlock, error) {
 	rows, err := svc.db.Query(
 		getMapBlocksQuery,
-		minLatitude,
-		maxLatitude,
-		minLongitude,
-		maxLongitude)
+		minLatitude.Sub(coordinateOvershoot),
+		maxLatitude.Add(coordinateOvershoot),
+		minLongitude.Sub(coordinateOvershoot),
+		maxLongitude.Add(coordinateOvershoot))
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to read map blocks")
 	}
@@ -73,13 +87,17 @@ SELECT
 	id, latitude, longitude
 FROM map_blocks
 WHERE
-	latitude = TRUNC($1, 2)
-	AND longitude = TRUNC($2, 2)
+	latitude = $1
+	AND longitude = $2
 `
 
-func (svc Persistence) GetMapBlock(latitude, longitude float64) (*MapBlock, error) {
+func (svc Persistence) GetMapBlock(latitude, longitude decimal.Decimal) (*MapBlock, error) {
 	var block MapBlock
-	err := svc.db.QueryRow(getMapBlockQuery, latitude, longitude).Scan(
+	err := svc.db.QueryRow(
+		getMapBlockQuery,
+		segmentCoordinate(latitude),
+		segmentCoordinate(longitude),
+	).Scan(
 		&block.ID,
 		&block.Longitude,
 		&block.Latitude,
@@ -93,15 +111,17 @@ func (svc Persistence) GetMapBlock(latitude, longitude float64) (*MapBlock, erro
 	return &block, nil
 }
 
-// TODO: Adjust map block size. Consider 0.02 instead of 0.01
 const insertMapBlockQuery = `
 INSERT INTO map_blocks (latitude, longitude)
-VALUES (TRUNC($1, 2), TRUNC($2, 2))
+VALUES ($1, $2)
 ON CONFLICT DO NOTHING
 `
 
-func (svc Persistence) InsertMapBlock(latitude, longitude float64) error {
-	_, err := svc.db.Exec(insertMapBlockQuery, latitude, longitude)
+func (svc Persistence) InsertMapBlock(latitude, longitude decimal.Decimal) error {
+	_, err := svc.db.Exec(
+		insertMapBlockQuery,
+		segmentCoordinate(latitude),
+		segmentCoordinate(longitude))
 	return err
 }
 

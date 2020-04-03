@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/matthewdale/manualsmap.com/services"
+	"github.com/shopspring/decimal"
 
 	"github.com/alecthomas/kong"
 	"github.com/dpapathanasiou/go-recaptcha"
@@ -41,6 +42,9 @@ var opts struct {
 }
 
 func main() {
+	// Marshal decimal types as numbers, not strings.
+	decimal.MarshalJSONWithoutQuotes = true
+
 	// TODO: Add logging.
 	kong.Parse(&opts, kong.UsageOnError())
 

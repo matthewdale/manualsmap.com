@@ -8,22 +8,23 @@ import (
 	httptransport "github.com/go-kit/kit/transport/http"
 	"github.com/gorilla/schema"
 	"github.com/pkg/errors"
+	"github.com/shopspring/decimal"
 
 	"github.com/matthewdale/manualsmap.com/encoders"
 	"github.com/matthewdale/manualsmap.com/services"
 )
 
 type getMapBlocksRequest struct {
-	MinLatitude  float64 `schema:"min_latitude"`
-	MinLongitude float64 `schema:"min_longitude"`
-	MaxLatitude  float64 `schema:"max_latitude"`
-	MaxLongitude float64 `schema:"max_longitude"`
+	MinLatitude  decimal.Decimal `schema:"min_latitude"`
+	MinLongitude decimal.Decimal `schema:"min_longitude"`
+	MaxLatitude  decimal.Decimal `schema:"max_latitude"`
+	MaxLongitude decimal.Decimal `schema:"max_longitude"`
 }
 
 type mapBlock struct {
-	ID        int     `json:"id"`
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
+	ID        int             `json:"id"`
+	Latitude  decimal.Decimal `json:"latitude"`
+	Longitude decimal.Decimal `json:"longitude"`
 }
 
 type getMapBlocksResponse struct {
