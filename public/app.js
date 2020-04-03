@@ -248,6 +248,10 @@ map.addEventListener("dragging", function (event) {
 
 //////// Display Cars ////////
 function displayCars(mapBlockId) {
+    let container = $("#cars");
+    container.html("");
+    canvi.open();
+
     fetch(`/mapblocks/${mapBlockId}/cars`)
         .then(res => {
             handleErrors(res);
@@ -275,9 +279,6 @@ function displayCars(mapBlockId) {
             });
 
             // Build 3 columns of cards using Bootstrap columns.
-            let container = $("#cars");
-            container.html("");
-
             let i = 0;
             while (i < cards.length) {
                 let row = $(`<div class="row"></div>`);
@@ -291,8 +292,6 @@ function displayCars(mapBlockId) {
                 }
                 container.append(row);
             }
-
-            canvi.open();
         }).catch(error => {
             alert("Failed to fetch cars: " + error);
         });
