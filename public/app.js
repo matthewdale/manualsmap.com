@@ -204,6 +204,7 @@ function submitCar(token) {
         })
         .then(_ => {
             addCarModal("hide");
+            resetAddCarForm();
             fetchVisibleOverlays();
         }).catch(error => {
             alert("Failed to add car: " + error);
@@ -326,6 +327,9 @@ function buildOverlays(mapBlocks) {
     });
 }
 
+// The maximum longitude or latitude span to display overlays/
+const maxSpan = 0.7;
+var overlays = [];
 function fetchVisibleOverlays() {
     // If we're going to fetch too many blocks, skip it.
     if (map.region.span.latitudeDelta >= maxSpan || map.region.span.longitudeDelta >= maxSpan) {
@@ -349,9 +353,6 @@ function fetchVisibleOverlays() {
         });
 }
 
-// The maximum longitude or latitude span to display overlays/
-const maxSpan = 0.7;
-var overlays = [];
 map.addEventListener("region-change-end", function (event) {
     fetchVisibleOverlays();
 });
