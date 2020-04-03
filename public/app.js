@@ -312,7 +312,7 @@ function mapBlockOverlay(latitude, longitude, color = "#007BFF") {
     ], {
         style: new mapkit.Style({
             fillColor: color,
-            fillOpacity: 0.3,
+            fillOpacity: 0.15,
             strokeColor: "#FF0000",
             strokeOpacity: 0.5,
             lineWidth: 1,
