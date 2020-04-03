@@ -64,16 +64,11 @@
             overflow: hidden;
         }
 
-        .privacy-notice {
+        .info-text {
             padding: 2px;
             font-size: 10px;
             text-decoration: underline;
             cursor: pointer;
-        }
-
-        #codeLink {
-            padding: 2px;
-            font-size: 10px;
         }
 
         a:link,
@@ -142,17 +137,15 @@
                 </div>
             </div>
         </div>
-        <div id="info">
-            <div class="privacy-notice" role="button" onclick="displayPrivacyNotice();">Privacy Notice
+        <div id="info" class="form-row">
+            <div class="info-text col-auto" role="button" onclick="whatModal();">What is Manuals Map?
             </div>
-            <div id="codeLink">
-                See <a href="https://github.com/matthewdale/manualsmap.com" target="_blank">code on GitHub</a>.
+            <div class="info-text col-auto" role="button" onclick="privacyModal();">Privacy Notice
             </div>
         </div>
-        <!-- TODO: Add contact information -->
     </main>
 
-    <!-- Modal -->
+    <!-- Add car modal -->
     <div id="addCarModal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
@@ -227,7 +220,7 @@
                                     <input name="licensePlate" type="text" class="form-control"
                                         placeholder="License plate">
                                 </div>
-                                <div class="privacy-notice" role="button" onclick="displayPrivacyNotice();">Privacy
+                                <div class="info-text" role="button" onclick="privacyModal();">Privacy
                                     Notice
                                 </div>
                             </div>
@@ -271,6 +264,52 @@
                     <button id="submitCar" type="button" class="g-recaptcha btn btn-primary" data-dismiss="modal"
                         data-sitekey="6LcVUuYUAAAAABLrMX_tg7gdIisBFiD8hReuTNs6"
                         data-callback="submitCar">Submit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Privacy modal -->
+    <div id="privacyModal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Privacy Notice</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+                    <h6>License plates</h6>
+                    <h6>Images</h6>
+                    <h6>Locations</h6>
+                </div>
+
+                <div class="modal-footer">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- What is Manuals Map? modal -->
+    <div id="whatModal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">What is Manuals Map?</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+                    <h6>Code</h6>
+                    See <a href="https://github.com/matthewdale/manualsmap.com" target="_blank">code on GitHub</a>.
+                    <h6>Contact</h6>
+                </div>
+
+                <div class="modal-footer">
                 </div>
             </div>
         </div>

@@ -31,8 +31,12 @@ function handleErrors(response) {
     return response;
 }
 
-function displayPrivacyNotice() {
-    alert("PRIVACY!");
+function whatModal(options) {
+    $("#whatModal").modal(options);
+}
+
+function privacyModal(options) {
+    $("#privacyModal").modal(options);
 }
 
 //////// Search ////////

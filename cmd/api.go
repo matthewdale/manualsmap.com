@@ -44,18 +44,14 @@ var opts struct {
 func main() {
 	// Marshal decimal types as numbers, not strings.
 	decimal.MarshalJSONWithoutQuotes = true
-
-	// TODO: Add logging.
 	kong.Parse(&opts, kong.UsageOnError())
-
 	recaptcha.Init(opts.RecaptchaSecret)
-
-	router := mux.NewRouter()
 
 	mapkitSecret, err := ioutil.ReadFile(opts.MapkitSecret)
 	if err != nil {
 		log.Fatal("Error reading secret key", err)
 	}
+
 	appleMapkit, err := services.NewAppleMapkit(
 		opts.AppleTeamID,
 		opts.MapkitKeyID,
@@ -64,7 +60,6 @@ func main() {
 	if err != nil {
 		log.Fatal("Error parsing private key PEM file", err)
 	}
-	router.Methods("GET").Path("/mapkit/token").Handler(mapkit.GetTokenHandler(appleMapkit))
 
 	db, err := sql.Open("postgres", opts.PSQLConn)
 	if err != nil {
@@ -73,15 +68,35 @@ func main() {
 
 	persistence := services.NewPersistence(db, []byte(opts.LicenseSalt))
 	cloudinary := services.NewCloudinary(opts.CloudinarySecret)
-	router.Methods("POST").Path("/images/signature").Handler(images.PostSignatureHandler(cloudinary))
-	router.Methods("POST").Path("/images/notification").Handler(images.PostNotificationHandler(persistence, cloudinary))
 
-	router.Methods("GET").Path("/mapblocks").Handler(mapblocks.GetHandler(persistence))
-	router.Methods("GET").Path("/mapblocks/{id}/cars").Handler(mapblocks.GetCarsHandler(persistence, cloudinary))
-	router.Methods("POST").Path("/cars").Handler(mapblocks.PostCarsHandler(persistence))
-
-	// TODO: Remove or replace?
-	router.PathPrefix("/").Handler(http.FileServer(http.Dir("public")))
+	router := mux.NewRouter()
+	router.
+		Methods("GET").
+		Path("/mapkit/token").
+		Handler(mapkit.GetTokenHandler(appleMapkit))
+	router.
+		Methods("POST").
+		Path("/images/signature").
+		Handler(images.PostSignatureHandler(cloudinary))
+	router.
+		Methods("POST").
+		Path("/images/notification").
+		Handler(images.PostNotificationHandler(persistence, cloudinary))
+	router.
+		Methods("GET").
+		Path("/mapblocks").
+		Handler(mapblocks.GetHandler(persistence))
+	router.
+		Methods("GET").
+		Path("/mapblocks/{id}/cars").
+		Handler(mapblocks.GetCarsHandler(persistence, cloudinary))
+	router.
+		Methods("POST").
+		Path("/cars").
+		Handler(mapblocks.PostCarsHandler(persistence))
+	router.
+		PathPrefix("/").
+		Handler(http.FileServer(http.Dir("public")))
 
 	if err := http.ListenAndServe(opts.Addr, router); err != nil {
 		log.Print("Error starting HTTP server:", err)
