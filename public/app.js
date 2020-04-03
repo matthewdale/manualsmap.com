@@ -218,7 +218,6 @@ function submitCar(token) {
 }
 
 const mapBlockSize = 0.05;
-
 function segmentCoordinate(coordinate) {
     return truncate(truncate(coordinate / mapBlockSize, 0) * mapBlockSize, 2);
 }
@@ -341,8 +340,8 @@ function buildOverlays(mapBlocks) {
     });
 }
 
-// The maximum longitude or latitude span to display overlays/
-const maxSpan = 0.7;
+// The maximum longitude or latitude span to display overlays.
+const maxSpan = 2;
 var overlays = [];
 function fetchVisibleOverlays() {
     // If we're going to fetch too many blocks, skip it.
