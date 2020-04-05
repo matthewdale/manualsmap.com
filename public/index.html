@@ -122,7 +122,7 @@
                 <div class="col-auto">
                     <form onsubmit="submitSearch();return false;">
                         <div class="d-flex">
-                            <input id="searchQuery" type="text" class="form-control" placeholder="Search Manuals Map"
+                            <input id="searchInput" type="text" class="form-control" placeholder="Search Manuals Map"
                                 style="width: 180px;">
                             <span class="input-group-btn">
                                 <button type="submit" class="btn btn-primary">Search</button>
@@ -131,7 +131,7 @@
                     </form>
                 </div>
                 <div class="col-auto">
-                    <button type="button" class="btn btn-dark" onclick="placeOnMap();">
+                    <button type="button" class="btn btn-dark" onclick="addCarModal();">
                         Add car
                     </button>
                 </div>
@@ -163,6 +163,7 @@
                             <div class="form-row">
                                 <div class="col-md-6">
                                     <select name="licenseState" class="form-control">
+                                        <option disabled selected>Select a state...</option>
                                         <option value="AL">Alabama</option>
                                         <option value="AK">Alaska</option>
                                         <option value="AZ">Arizona</option>
@@ -220,8 +221,8 @@
                                     <input name="licensePlate" type="text" class="form-control"
                                         placeholder="License plate">
                                 </div>
-                                <div class="info-text" role="button" onclick="privacyModal();">Privacy
-                                    Notice
+                                <div class="info-text" role="button" onclick="privacyModal();">
+                                    Privacy Notice
                                 </div>
                             </div>
                         </div>
@@ -229,8 +230,20 @@
                         <div class="form-group">
                             <h4>Car</h4>
                             <div class="form-row">
-                                <input name="year" type="text" class="form-control" placeholder="Year">
-                                <input name="brand" type="text" class="form-control" placeholder="Brand">
+                                <select id="yearSelect" name="year" class="form-control">
+                                    <option disabled selected>Select a year...</option>
+                                </select>
+                                <script>
+                                    let select = document.getElementById('yearSelect');
+                                    let currentYear = new Date().getFullYear();
+                                    for (var i = currentYear + 1; i >= 1900; i--) {
+                                        var opt = document.createElement('option');
+                                        opt.value = i;
+                                        opt.innerHTML = i;
+                                        select.appendChild(opt);
+                                    }
+                                </script>
+                                <input name="brand" type="text" class="form-control" placeholder="Brand" required>
                                 <input name="model" type="text" class="form-control" placeholder="Model">
                                 <input name="trim" type="text" class="form-control" placeholder="Trim">
                                 <input name="color" type="text" class="form-control" placeholder="Color">
@@ -240,11 +253,11 @@
                         <div class="form-group">
                             <div class="form-row">
                                 <div class="col-6">
-                                    <button id="addImage" type="button" class="g-recaptcha btn btn-secondary"
+                                    <!-- <button id="addImage" type="button" class="g-recaptcha btn btn-secondary"
                                         data-sitekey="6LcVUuYUAAAAABLrMX_tg7gdIisBFiD8hReuTNs6" data-badge="bottomleft"
                                         data-callback="addImage">
                                         Add image
-                                    </button>
+                                    </button> -->
                                     <button id="removeImage" type="button" class="btn btn-danger"
                                         style="display: none;">
                                         Remove image
@@ -255,15 +268,34 @@
                                 </div>
                             </div>
                         </div>
+
+                        <fieldset disabled>
+                            <div class="form-row">
+                                <div class="col-auto">
+                                    <label>Latitude:</label>
+                                    <input id="latitude" type="text" class="form-control">
+                                </div>
+                                <div class="col-auto">
+                                    <label>Longitude:</label>
+                                    <input id="longitude" type="text" class="form-control">
+                                </div>
+                            </div>
+                        </fieldset>
+
                     </form>
 
                 </div>
 
                 <div id="addCarFooter" class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Reposition</button>
-                    <button id="submitCar" type="button" class="g-recaptcha btn btn-primary" data-dismiss="modal"
-                        data-sitekey="6LcVUuYUAAAAABLrMX_tg7gdIisBFiD8hReuTNs6" data-badge="bottomleft"
-                        data-callback="submitCar">Submit</button>
+                    <button type="button" class="btn btn-danger" data-dismiss="modal" onclick="resetAddCar();">
+                        Cancel
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="placeOnMap();">
+                        Place on map
+                    </button>
+                    <button id="submitCar" type="button" class="g-recaptcha btn btn-primary" style="display: none;"
+                        data-dismiss="modal" data-sitekey="6LcVUuYUAAAAABLrMX_tg7gdIisBFiD8hReuTNs6"
+                        data-badge="bottomleft" data-callback="submitCar">Submit</button>
                 </div>
             </div>
         </div>

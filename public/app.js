@@ -31,6 +31,10 @@ function handleErrors(response) {
     return response;
 }
 
+function addCarModal(options) {
+    $("#addCarModal").modal(options);
+}
+
 function whatModal(options) {
     $("#whatModal").modal(options);
 }
@@ -41,8 +45,9 @@ function privacyModal(options) {
 
 //////// Search ////////
 function submitSearch() {
-    search($("#searchQuery").val());
-    $("#searchQuery").blur();
+    let searchInput = $("#searchInput");
+    search(searchInput.val());
+    searchInput.blur();
 }
 
 function search(query) {
@@ -67,25 +72,56 @@ function search(query) {
 
 
 //////// Add Car ////////
-function addCarModal(options) {
-    $("#addCarModal").modal(options);
+var addCarOverlay = null;
+function drawAddCarOverlay(latitude, longitude) {
+    if (addCarOverlay) {
+        map.removeOverlay(addCarOverlay);
+    }
+    addCarOverlay = mapBlockOverlay(
+        segmentCoordinate(latitude),
+        segmentCoordinate(longitude),
+        "#00FF7B");
+    map.addOverlay(addCarOverlay);
 }
 
-var newCarAnnotation = null;
+function isVisible(annotation) {
+    let region = map.region.toBoundingRegion();
+    let coordinate = annotation.coordinate;
+
+    return coordinate.latitude <= region.northLatitude &&
+        coordinate.latitude >= region.southLatitude &&
+        coordinate.longitude <= region.eastLongitude &&
+        coordinate.longitude >= region.westLongitude;
+}
+
+var addCarAnnotation = null;
 function placeOnMap() {
-    if (newCarAnnotation) {
-        map.removeAnnotation(newCarAnnotation);
+    if (addCarAnnotation) {
+        return;
     }
-    newCarAnnotation = new mapkit.MarkerAnnotation(map.center, {
+    addCarAnnotation = new mapkit.MarkerAnnotation(map.center, {
         draggable: true,
         calloutEnabled: false,
         title: "Click and hold to position",
         titleVisibility: "visible",
     });
-    newCarAnnotation.addEventListener("drag-end", function (event) {
+    addCarAnnotation.addEventListener("dragging", function (event) {
+        drawAddCarOverlay(
+            event.coordinate.latitude,
+            event.coordinate.longitude);
+    });
+    addCarAnnotation.addEventListener("drag-end", function (event) {
+        $("#addCar #latitude").val(event.target.coordinate.latitude);
+        $("#addCar #longitude").val(event.target.coordinate.longitude);
         addCarModal("show");
     });
-    map.addAnnotation(newCarAnnotation);
+    map.addAnnotation(addCarAnnotation);
+
+    drawAddCarOverlay(
+        addCarAnnotation.coordinate.latitude,
+        addCarAnnotation.coordinate.longitude);
+
+    $("#submitCar").show();
 }
 
 var cloudinaryUploadInfo;
@@ -160,20 +196,31 @@ function deleteImage(token) {
     fetch(`https://api.cloudinary.com/v1_1/${cloudinaryCloudName}/delete_by_token`, options);
 }
 
-function resetAddCarForm() {
+function resetAddCar() {
     let form = $("#addCar");
     let formEl = form.get(0);
     formEl["licenseState"].selectedIndex = 0;
     formEl["licensePlate"].value = "";
-    formEl["year"].value = "";
+    formEl["year"].selectedIndex = 0;
     formEl["brand"].value = "";
     formEl["model"].value = "";
     formEl["trim"].value = "";
     formEl["color"].value = "";
+    formEl["latitude"].value = "";
+    formEl["longitude"].value = "";
 
     form.find("#image").prop("src", "");
     form.find("#addImage").show();
     form.find("#removeImage").hide();
+
+    if (addCarOverlay) {
+        map.removeOverlay(addCarOverlay);
+        addCarOverlay = null;
+    }
+    if (addCarAnnotation) {
+        map.removeAnnotation(addCarAnnotation);
+        addCarAnnotation = null;
+    }
 }
 
 function submitCar(token) {
@@ -187,8 +234,8 @@ function submitCar(token) {
         model: formEl["model"].value,
         trim: formEl["trim"].value,
         color: formEl["color"].value,
-        latitude: newCarAnnotation.coordinate.latitude,
-        longitude: newCarAnnotation.coordinate.longitude,
+        latitude: Number(formEl["latitude"].value),
+        longitude: Number(formEl["longitude"].value),
         recaptcha: token,
     };
     if (cloudinaryUploadInfo) {
@@ -207,12 +254,7 @@ function submitCar(token) {
             return res.json();
         }).then(result => {
             addCarModal("hide");
-            resetAddCarForm();
-
-            map.removeOverlay(addCarOverlay);
-            addCarOverlay = null;
-            map.removeAnnotation(newCarAnnotation);
-            newCarAnnotation = null;
+            resetAddCar();
 
             displayCars(result.mapBlockId);
             fetchVisibleOverlays();
@@ -228,22 +270,9 @@ function segmentCoordinate(coordinate) {
 
 // Based on https://code-examples.net/en/q/3fe40a
 function truncate(number, digits) {
-    var re = new RegExp('^-?\\d+(?:\.\\d{0,' + (digits || -1) + '})?');
+    var re = new RegExp('^-?\\d+(?:\.\\d{0,' + digits + '})?');
     return Number(number.toString().match(re)[0]);
 };
-
-var addCarOverlay = null;
-map.addEventListener("dragging", function (event) {
-    if (addCarOverlay) {
-        map.removeOverlay(addCarOverlay);
-    }
-    // TODO: Change color of add car overlay.
-    addCarOverlay = mapBlockOverlay(
-        segmentCoordinate(event.coordinate.latitude),
-        segmentCoordinate(event.coordinate.longitude),
-        "#00FF7B");
-    map.addOverlay(addCarOverlay);
-});
 
 
 //////// Display Cars ////////
@@ -328,6 +357,9 @@ function mapBlockOverlay(latitude, longitude, color = "#007BFF") {
 }
 
 function buildOverlays(mapBlocks) {
+    if (!mapBlocks) {
+        return [];
+    }
     return mapBlocks.map(block => {
         let overlay = mapBlockOverlay(block.latitude, block.longitude);
         overlay.data = { id: block.id };
@@ -361,14 +393,24 @@ function fetchVisibleOverlays() {
     let maxLongitude = region.eastLongitude;
     let query = `min_latitude=${minLatitude}&min_longitude=${minLongitude}&max_latitude=${maxLatitude}&max_longitude=${maxLongitude}`
     fetch("/mapblocks?" + query)
-        .then(response => response.json())
+        .then(res => {
+            handleErrors(res);
+            return res.json();
+        })
         .then(result => {
             map.removeOverlays(overlays);
             overlays = buildOverlays(result.mapBlocks);
             map.addOverlays(overlays);
+        }).catch(error => {
+            console.log("Failed to get map blocks: " + error);
         });
 }
 
 map.addEventListener("region-change-end", function (event) {
     fetchVisibleOverlays();
+
+    if (addCarAnnotation && !isVisible(addCarAnnotation)) {
+        addCarAnnotation.coordinate = map.center;
+        drawAddCarOverlay(addCarAnnotation.coordinate);
+    }
 });
