@@ -91,6 +91,10 @@ func main() {
 		Path("/mapblocks/{id}/cars").
 		Handler(mapblocks.GetCarsHandler(persistence, cloudinary))
 	router.
+		Methods("GET").
+		Path("/cars/schema").
+		Handler(mapblocks.GetCarsSchemaHandler())
+	router.
 		Methods("POST").
 		Path("/cars").
 		Handler(mapblocks.PostCarsHandler(persistence))

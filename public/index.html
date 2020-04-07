@@ -13,6 +13,8 @@
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"></script>
     <script src="https://cdn.apple-mapkit.com/mk/5.x.x/mapkit.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ajv/6.12.0/ajv.min.js"
+        integrity="sha256-QZBaIVRF3ZHdyLzzW3WQQ5kVlqYeAgx4ccOv4ph/e/E=" crossorigin="anonymous"></script>
 
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
         crossorigin="anonymous">
@@ -161,7 +163,7 @@
                         <div class="form-group">
                             <h4>License Plate</h4>
                             <div class="form-row">
-                                <div class="col-md-6">
+                                <div class="col">
                                     <select name="licenseState" class="form-control">
                                         <option disabled selected>Select a state...</option>
                                         <option value="AL">Alabama</option>
@@ -217,19 +219,19 @@
                                         <option value="WY">Wyoming</option>
                                     </select>
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col">
                                     <input name="licensePlate" type="text" class="form-control"
                                         placeholder="License plate">
                                 </div>
-                                <div class="info-text" role="button" onclick="privacyModal();">
-                                    Privacy Notice
-                                </div>
+                            </div>
+                            <div class="info-text" role="button" onclick="privacyModal();">
+                                Privacy Notice
                             </div>
                         </div>
 
                         <div class="form-group">
                             <h4>Car</h4>
-                            <div class="form-row">
+                            <div class="form-group">
                                 <select id="yearSelect" name="year" class="form-control">
                                     <option disabled selected>Select a year...</option>
                                 </select>
@@ -243,44 +245,59 @@
                                         select.appendChild(opt);
                                     }
                                 </script>
-                                <input name="brand" type="text" class="form-control" placeholder="Brand" required>
+                            </div>
+                            <div class="form-group">
+                                <input name="brand" type="text" class="form-control" placeholder="Brand">
+                            </div>
+                            <div class="form-group">
                                 <input name="model" type="text" class="form-control" placeholder="Model">
+                            </div>
+                            <div class="form-group">
                                 <input name="trim" type="text" class="form-control" placeholder="Trim">
+                            </div>
+                            <div class="form-group">
                                 <input name="color" type="text" class="form-control" placeholder="Color">
                             </div>
                         </div>
 
                         <div class="form-group">
                             <div class="form-row">
-                                <div class="col-6">
-                                    <!-- <button id="addImage" type="button" class="g-recaptcha btn btn-secondary"
+                                <div class="col">
+                                    <button id="addImage" type="button" class="g-recaptcha btn btn-secondary"
                                         data-sitekey="6LcVUuYUAAAAABLrMX_tg7gdIisBFiD8hReuTNs6" data-badge="bottomleft"
                                         data-callback="addImage">
                                         Add image
-                                    </button> -->
+                                    </button>
                                     <button id="removeImage" type="button" class="btn btn-danger"
                                         style="display: none;">
                                         Remove image
                                     </button>
                                 </div>
-                                <div class="col-6">
+                                <div class="col">
                                     <img id="image" src="" style="max-height: 100px; max-width: 100%;">
                                 </div>
                             </div>
                         </div>
 
-                        <fieldset disabled>
+                        <fieldset class="form-group" disabled>
                             <div class="form-row">
-                                <div class="col-auto">
+                                <div class="col">
                                     <label>Latitude:</label>
-                                    <input id="latitude" type="text" class="form-control">
+                                    <input id="latitude" name="latitude" type="text" class="form-control">
                                 </div>
-                                <div class="col-auto">
+                                <div class="col">
                                     <label>Longitude:</label>
-                                    <input id="longitude" type="text" class="form-control">
+                                    <input id="longitude" name="longitude" type="text" class="form-control">
                                 </div>
                             </div>
                         </fieldset>
+
+                        <div class="form-group">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal"
+                                onclick="placeOnMap();">
+                                Place on map
+                            </button>
+                        </div>
 
                     </form>
 
@@ -290,12 +307,9 @@
                     <button type="button" class="btn btn-danger" data-dismiss="modal" onclick="resetAddCar();">
                         Cancel
                     </button>
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="placeOnMap();">
-                        Place on map
-                    </button>
-                    <button id="submitCar" type="button" class="g-recaptcha btn btn-primary" style="display: none;"
-                        data-dismiss="modal" data-sitekey="6LcVUuYUAAAAABLrMX_tg7gdIisBFiD8hReuTNs6"
-                        data-badge="bottomleft" data-callback="submitCar">Submit</button>
+                    <button id="submitCar" type="button" class="g-recaptcha btn btn-primary" data-dismiss="modal"
+                        data-sitekey="6LcVUuYUAAAAABLrMX_tg7gdIisBFiD8hReuTNs6" data-badge="bottomleft"
+                        data-callback="submitCar">Submit</button>
                 </div>
             </div>
         </div>

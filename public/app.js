@@ -120,8 +120,6 @@ function placeOnMap() {
     drawAddCarOverlay(
         addCarAnnotation.coordinate.latitude,
         addCarAnnotation.coordinate.longitude);
-
-    $("#submitCar").show();
 }
 
 var cloudinaryUploadInfo;
@@ -196,18 +194,39 @@ function deleteImage(token) {
     fetch(`https://api.cloudinary.com/v1_1/${cloudinaryCloudName}/delete_by_token`, options);
 }
 
-function resetAddCar() {
+function resetAddCarValidation() {
     let form = $("#addCar");
     let formEl = form.get(0);
-    formEl["licenseState"].selectedIndex = 0;
-    formEl["licensePlate"].value = "";
-    formEl["year"].selectedIndex = 0;
-    formEl["brand"].value = "";
-    formEl["model"].value = "";
-    formEl["trim"].value = "";
-    formEl["color"].value = "";
-    formEl["latitude"].value = "";
-    formEl["longitude"].value = "";
+    form.serializeArray().forEach(function (field, _) {
+        if (!(field.name in formEl)) {
+            return;
+        }
+        formEl[field.name].classList.remove("is-invalid");
+    })
+}
+
+function resetAddCar() {
+    resetAddCarValidation();
+
+    let form = $("#addCar");
+    let formEl = form.get(0);
+    [
+        "licenseState",
+        "year",
+    ].forEach(function (field, _) {
+        formEl[field].selectedIndex = 0;
+    });
+    [
+        "licensePlate",
+        "brand",
+        "model",
+        "trim",
+        "color",
+        "latitude",
+        "longitude",
+    ].forEach(function (field, _) {
+        formEl[field].value = "";
+    });
 
     form.find("#image").prop("src", "");
     form.find("#addImage").show();
@@ -223,9 +242,29 @@ function resetAddCar() {
     }
 }
 
+var postCarsValidator;
+fetch("/cars/schema")
+    .then(res => {
+        handleErrors(res);
+        return res.json();
+    }).then(result => {
+        let ajv = new Ajv({ allErrors: true });
+        postCarsValidator = ajv.compile(result);
+    }).catch(error => {
+        alert("Failed to fetch POST /cars schema: " + error);
+    });
+
+function validateAddCar(data) {
+    var valid = postCarsValidator(data);
+    if (!valid) {
+        return JSON.parse(JSON.stringify(postCarsValidator.errors));
+    }
+    return []
+}
+
 function submitCar(token) {
-    // TODO: Form validation.
-    let formEl = $("#addCar").get(0);
+    let form = $("#addCar");
+    let formEl = form.get(0);
     let data = {
         licenseState: formEl["licenseState"].value,
         licensePlate: formEl["licensePlate"].value,
@@ -234,13 +273,38 @@ function submitCar(token) {
         model: formEl["model"].value,
         trim: formEl["trim"].value,
         color: formEl["color"].value,
-        latitude: Number(formEl["latitude"].value),
-        longitude: Number(formEl["longitude"].value),
         recaptcha: token,
     };
+    if (formEl["latitude"].value) {
+        data.latitude = Number(formEl["latitude"].value);
+    }
+    if (formEl["longitude"].value) {
+        data.longitude = Number(formEl["longitude"].value);
+    }
     if (cloudinaryUploadInfo) {
         data.cloudinaryPublicId = cloudinaryUploadInfo.public_id;
     }
+
+    let errors = validateAddCar(data);
+    if (errors.length) {
+        console.log(errors);
+        resetAddCarValidation();
+        errors.map(err => {
+            switch (err.keyword) {
+                case "required":
+                    return err.params.missingProperty;
+                default:
+                    return err.dataPath.slice(1);
+            }
+        }).forEach(function (field, _) {
+            if (!(field in formEl)) {
+                return;
+            }
+            formEl[field].classList.add("is-invalid");
+        });
+        return false;
+    }
+
     let options = {
         method: "POST",
         body: JSON.stringify(data),

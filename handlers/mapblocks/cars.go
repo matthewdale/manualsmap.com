@@ -88,6 +88,100 @@ func GetCarsHandler(persistence services.Persistence, cloudinary services.Cloudi
 	)
 }
 
+func GetCarsSchemaHandler() http.Handler {
+	return httptransport.NewServer(
+		func(_ context.Context, request interface{}) (interface{}, error) {
+			return postCarsRequestSchema, nil
+		},
+		func(_ context.Context, r *http.Request) (interface{}, error) {
+			return nil, nil
+		},
+		encoders.JSONResponseEncoder,
+	)
+}
+
+var postCarsRequestValidator *gojsonschema.Schema
+var postCarsRequestSchema = map[string]interface{}{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"type":    "object",
+	"properties": map[string]interface{}{
+		"licenseState": map[string]interface{}{
+			"type": "string",
+			"enum": []string{
+				"AL", "AK", "AZ", "ZR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL",
+				"IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT",
+				"NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI",
+				"SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "DC", "WV", "WI", "WY",
+			},
+		},
+		"licensePlate": map[string]interface{}{
+			"type":      "string",
+			"minLength": 3,
+			"maxLength": 20,
+		},
+		"year": map[string]interface{}{
+			"type":    "number",
+			"minimum": 1900,
+			"maximum": 2100,
+		},
+		"brand": map[string]interface{}{
+			"type":      "string",
+			"minLength": 2,
+			"maxLength": 100,
+		},
+		"model": map[string]interface{}{
+			"type":      "string",
+			"minLength": 1,
+			"maxLength": 100,
+		},
+		"trim": map[string]interface{}{
+			"type":      "string",
+			"maxLength": 100,
+		},
+		"color": map[string]interface{}{
+			"type": "string",
+			// TODO: Enumeration?
+			"maxLength": 100,
+		},
+		"latitude": map[string]interface{}{
+			"type":    "number",
+			"minimum": -360,
+			"maximum": 360,
+		},
+		"longitude": map[string]interface{}{
+			"type":    "number",
+			"minimum": -360,
+			"maximum": 360,
+		},
+		"recaptcha": map[string]interface{}{
+			"type": "string",
+		},
+		"cloudinaryPublicId": map[string]interface{}{
+			"type": "string",
+		},
+	},
+	"required": []string{
+		"licenseState",
+		"licensePlate",
+		"year",
+		"brand",
+		"model",
+		"color",
+		"latitude",
+		"longitude",
+		"recaptcha",
+	},
+}
+
+func init() {
+	var err error
+	postCarsRequestValidator, err = gojsonschema.NewSchema(
+		gojsonschema.NewGoLoader(postCarsRequestSchema))
+	if err != nil {
+		log.Fatal("Error loading POST Cars request schema:", err)
+	}
+}
+
 type postCarsRequest struct {
 	Year               int             `json:"year"`
 	Brand              string          `json:"brand"`
@@ -109,76 +203,6 @@ func (req postCarsRequest) RecaptchaResponse() string {
 
 func (req postCarsRequest) RemoteIP() string {
 	return req.remoteIP
-}
-
-var postCarsRequestSchema *gojsonschema.Schema
-
-func init() {
-	var err error
-	postCarsRequestSchema, err = gojsonschema.NewSchema(gojsonschema.NewGoLoader(map[string]interface{}{
-		"$schema": "http://json-schema.org/draft-07/schema#",
-		"type":    "object",
-		"properties": map[string]interface{}{
-			"year": map[string]interface{}{
-				"type":    "number",
-				"minimum": 1900,
-				"maximum": 2100,
-			},
-			"brand": map[string]interface{}{
-				"type":      "string",
-				"minLength": 2,
-				"maxLength": 100,
-			},
-			"model": map[string]interface{}{
-				"type":      "string",
-				"minLength": 1,
-				"maxLength": 100,
-			},
-			"trim": map[string]interface{}{
-				"type":      "string",
-				"maxLength": 100,
-			},
-			"color": map[string]interface{}{
-				"type": "string",
-				// TODO: Enumeration?
-				"maxLength": 100,
-			},
-			"licenseState": map[string]interface{}{
-				"type": "string",
-				"enum": []string{
-					"AL", "AK", "AZ", "ZR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL",
-					"IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT",
-					"NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI",
-					"SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "DC", "WV", "WI", "WY",
-				},
-			},
-			"licensePlate": map[string]interface{}{
-				"type":      "string",
-				"minLength": 3,
-				"maxLength": 20,
-			},
-			"latitude": map[string]interface{}{
-				"type":    "number",
-				"minimum": -360,
-				"maximum": 360,
-			},
-			"longitude": map[string]interface{}{
-				"type":    "number",
-				"minimum": -360,
-				"maximum": 360,
-			},
-			"recaptcha": map[string]interface{}{
-				"type": "string",
-			},
-			"cloudinaryPublicId": map[string]interface{}{
-				"type": "string",
-			},
-		},
-		"required": []string{"year", "brand", "model", "color", "licenseState", "licensePlate", "latitude", "longitude", "recaptcha"},
-	}))
-	if err != nil {
-		log.Fatal("Error loading POST Cars request schema:", err)
-	}
 }
 
 type postCarsResponse struct {
@@ -245,7 +269,8 @@ func postCarsDecoder(_ context.Context, r *http.Request) (interface{}, error) {
 			http.StatusInternalServerError)
 	}
 
-	result, err := postCarsRequestSchema.Validate(gojsonschema.NewBytesLoader(body))
+	result, err := postCarsRequestValidator.Validate(
+		gojsonschema.NewBytesLoader(body))
 	if err != nil {
 		return nil, encoders.NewJSONError(
 			errors.WithMessage(err, "error validating JSON body"),
