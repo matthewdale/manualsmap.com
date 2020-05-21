@@ -15,6 +15,8 @@
     <script src="https://cdn.apple-mapkit.com/mk/5.x.x/mapkit.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ajv/6.12.0/ajv.min.js"
         integrity="sha256-QZBaIVRF3ZHdyLzzW3WQQ5kVlqYeAgx4ccOv4ph/e/E=" crossorigin="anonymous"></script>
+    <script src="https://www.carqueryapi.com/js/carquery.0.3.4.js"></script>
+
 
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
         crossorigin="anonymous">
@@ -232,31 +234,33 @@
                         <div class="form-group">
                             <h4>Car</h4>
                             <div class="form-group">
-                                <select id="yearSelect" name="year" class="form-control">
-                                    <option disabled selected>Select a year...</option>
+                                <select name="year" id="car-years" class="form-control"></select>
+                            </div>
+                            <div class="form-group">
+                                <select name="make" id="car-makes" class="form-control"></select>
+                            </div>
+                            <div class="form-group">
+                                <select name="model" id="car-models" class="form-control"></select>
+                            </div>
+                            <div class="form-group">
+                                <select name="trim" id="car-model-trims" class="form-control"></select>
+                            </div>
+                            <div class="form-group">
+                                <select name="color" class="form-control">
+                                    <option>Black</option>
+                                    <option>Blue</option>
+                                    <option>Brown</option>
+                                    <option>Gold</option>
+                                    <option>Gray</option>
+                                    <option>Green</option>
+                                    <option>Orange</option>
+                                    <option>Purple</option>
+                                    <option>Red</option>
+                                    <option>Silver</option>
+                                    <option>Tan</option>
+                                    <option>White</option>
+                                    <option>Yellow</option>
                                 </select>
-                                <script>
-                                    let select = document.getElementById('yearSelect');
-                                    let currentYear = new Date().getFullYear();
-                                    for (var i = currentYear + 1; i >= 1900; i--) {
-                                        var opt = document.createElement('option');
-                                        opt.value = i;
-                                        opt.innerHTML = i;
-                                        select.appendChild(opt);
-                                    }
-                                </script>
-                            </div>
-                            <div class="form-group">
-                                <input name="brand" type="text" class="form-control" placeholder="Brand">
-                            </div>
-                            <div class="form-group">
-                                <input name="model" type="text" class="form-control" placeholder="Model">
-                            </div>
-                            <div class="form-group">
-                                <input name="trim" type="text" class="form-control" placeholder="Trim">
-                            </div>
-                            <div class="form-group">
-                                <input name="color" type="text" class="form-control" placeholder="Color">
                             </div>
                         </div>
 
@@ -373,7 +377,7 @@
                 <div class="card-body">
                     <h5 class="card-title">
                         <span id="year"></span>
-                        <span id="brand"></span>
+                        <span id="make"></span>
                         <span id="model"></span>
                         <span id="trim"></span>
                     </h5>

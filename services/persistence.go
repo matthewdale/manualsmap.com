@@ -151,7 +151,7 @@ func (svc Persistence) UpdateImage(publicID, status string) error {
 
 type Car struct {
 	Year  int
-	Brand string
+	Make  string
 	Model string
 	Trim  string
 	Color string
@@ -160,6 +160,7 @@ type Car struct {
 
 // TODO: Fetch additional columns, order by created descending,
 // and paginate.
+// TODO: Rename "brand" to "make".
 const getCarsQuery = `
 SELECT
 	c.year,
@@ -189,7 +190,7 @@ func (svc Persistence) GetCars(mapBlockID int) ([]Car, error) {
 		var format sql.NullString
 		err := rows.Scan(
 			&car.Year,
-			&car.Brand,
+			&car.Make,
 			&car.Model,
 			&car.Trim,
 			&car.Color,
@@ -240,7 +241,7 @@ func (svc Persistence) InsertCar(
 	licensePlate string,
 	mapBlockID,
 	year int,
-	brand,
+	make,
 	model,
 	trim,
 	color,
@@ -255,7 +256,7 @@ func (svc Persistence) InsertCar(
 		hash,
 		mapBlockID,
 		year,
-		strings.TrimSpace(brand),
+		strings.TrimSpace(make),
 		strings.TrimSpace(model),
 		strings.TrimSpace(trim),
 		strings.ToLower(strings.TrimSpace(color)),

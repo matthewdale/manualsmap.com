@@ -28,7 +28,7 @@ type getCarsRequest struct {
 
 type carResponse struct {
 	Year         int    `json:"year"`
-	Brand        string `json:"brand"`
+	Make         string `json:"make"`
 	Model        string `json:"model"`
 	Trim         string `json:"trim"`
 	Color        string `json:"color"`
@@ -53,7 +53,7 @@ func getCarsEndpoint(persistence services.Persistence, cloudinary services.Cloud
 		for _, car := range cars {
 			carResponses = append(carResponses, carResponse{
 				Year:         car.Year,
-				Brand:        car.Brand,
+				Make:         car.Make,
 				Model:        car.Model,
 				Trim:         car.Trim,
 				Color:        car.Color,
@@ -124,7 +124,7 @@ var postCarsRequestSchema = map[string]interface{}{
 			"minimum": 1900,
 			"maximum": 2100,
 		},
-		"brand": map[string]interface{}{
+		"make": map[string]interface{}{
 			"type":      "string",
 			"minLength": 2,
 			"maxLength": 100,
@@ -164,7 +164,7 @@ var postCarsRequestSchema = map[string]interface{}{
 		"licenseState",
 		"licensePlate",
 		"year",
-		"brand",
+		"make",
 		"model",
 		"color",
 		"latitude",
@@ -184,7 +184,7 @@ func init() {
 
 type postCarsRequest struct {
 	Year               int             `json:"year"`
-	Brand              string          `json:"brand"`
+	Make               string          `json:"make"`
 	Model              string          `json:"model"`
 	Trim               string          `json:"trim"`
 	Color              string          `json:"color"`
@@ -239,7 +239,7 @@ func postCarsEndpoint(persistence services.Persistence) endpoint.Endpoint {
 			r.LicensePlate,
 			block.ID,
 			r.Year,
-			r.Brand,
+			r.Make,
 			r.Model,
 			r.Trim,
 			r.Color,

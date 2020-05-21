@@ -17,6 +17,14 @@ mapkit.init({
     }
 });
 
+// See http://www.carqueryapi.com/
+var carquery = new CarQuery();
+carquery.init();
+carquery.setFilters({ sold_in_us: true });
+carquery.initYearMakeModelTrim("car-years", "car-makes", "car-models", "car-model-trims");
+
+
+
 var map = new mapkit.Map("map", {
     // TODO: Is there any way to get rid of the user location overlay?
     showsUserLocation: false,
@@ -218,7 +226,7 @@ function resetAddCar() {
     });
     [
         "licensePlate",
-        "brand",
+        "make",
         "model",
         "trim",
         "color",
@@ -262,17 +270,21 @@ function validateAddCar(data) {
     return []
 }
 
+function getSelectedText(el) {
+    return el[el.selectedIndex].innerText;
+}
+
 function submitCar(token) {
     let form = $("#addCar");
     let formEl = form.get(0);
     let data = {
         licenseState: formEl["licenseState"].value,
         licensePlate: formEl["licensePlate"].value,
-        year: Number(formEl["year"].value),
-        brand: formEl["brand"].value,
-        model: formEl["model"].value,
-        trim: formEl["trim"].value,
-        color: formEl["color"].value,
+        year: Number(getSelectedText(formEl["year"])),
+        make: getSelectedText(formEl["make"]),
+        model: getSelectedText(formEl["model"]),
+        trim: getSelectedText(formEl["trim"]),
+        color: getSelectedText(formEl["color"]),
         recaptcha: token,
     };
     if (formEl["latitude"].value) {
@@ -355,7 +367,7 @@ function displayCars(mapBlockId) {
             let cards = result.cars.map(car => {
                 let div = $("#carTemplate .car").clone();
                 div.find("#year").text(car.year);
-                div.find("#brand").text(car.brand);
+                div.find("#make").text(car.make);
                 div.find("#model").text(car.model);
                 div.find("#trim").text(car.trim);
                 div.find("#color").text(car.color);
