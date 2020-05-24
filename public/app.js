@@ -219,17 +219,15 @@ function resetAddCar() {
     let form = $("#addCar");
     let formEl = form.get(0);
     [
-        "licenseState",
         "year",
-    ].forEach(function (field, _) {
-        formEl[field].selectedIndex = 0;
-    });
-    [
-        "licensePlate",
         "make",
         "model",
         "trim",
         "color",
+    ].forEach(function (field, _) {
+        formEl[field].selectedIndex = 0;
+    });
+    [
         "latitude",
         "longitude",
     ].forEach(function (field, _) {
@@ -277,9 +275,13 @@ function getSelectedText(el) {
 function submitCar(token) {
     let form = $("#addCar");
     let formEl = form.get(0);
+    let trim = getSelectedText(formEl["trim"]);
+    // The default selection for the CarQuery data is "None". If the user
+    // selects "None", change it to an empty string instead.
+    if (trim.toLowerCase() == "none") {
+        trim = "";
+    }
     let data = {
-        licenseState: formEl["licenseState"].value,
-        licensePlate: formEl["licensePlate"].value,
         year: Number(getSelectedText(formEl["year"])),
         make: getSelectedText(formEl["make"]),
         model: getSelectedText(formEl["model"]),

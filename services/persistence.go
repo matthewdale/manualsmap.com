@@ -2,14 +2,10 @@ package services
 
 import (
 	"database/sql"
-	"encoding/base64"
-	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
-	"golang.org/x/crypto/scrypt"
 )
 
 // Persistence is a service that provides persistence for all service data in a
@@ -209,22 +205,8 @@ func (svc Persistence) GetCars(mapBlockID int) ([]Car, error) {
 	return cars, nil
 }
 
-var nonAlphanumeric = regexp.MustCompile(`[^\w\d]`)
-
-func (svc Persistence) licenseHash(licenseState, licensePlate string) (string, error) {
-	license := []byte(fmt.Sprintf("%s-%s",
-		strings.ToUpper(strings.TrimSpace(licenseState)),
-		strings.ToUpper(nonAlphanumeric.ReplaceAllString(licensePlate, ""))))
-	hash, err := scrypt.Key(license, svc.salt, 1<<15, 8, 1, 32)
-	if err != nil {
-		return "", err
-	}
-	return base64.StdEncoding.EncodeToString(hash), nil
-}
-
 const insertCarQuery = `
 INSERT INTO cars(
-	license_hash,
 	map_block_id,
 	year,
 	make,
@@ -232,12 +214,10 @@ INSERT INTO cars(
 	trim,
 	color,
 	images_public_id
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+) VALUES ($1, $2, $3, $4, $5, $6, $7)
 `
 
 func (svc Persistence) InsertCar(
-	licenseState,
-	licensePlate string,
 	mapBlockID,
 	year int,
 	make,
@@ -246,13 +226,8 @@ func (svc Persistence) InsertCar(
 	color,
 	imagePublicID string,
 ) error {
-	hash, err := svc.licenseHash(licenseState, licensePlate)
-	if err != nil {
-		return errors.WithMessage(err, "error generating license hash")
-	}
-	_, err = svc.db.Exec(
+	_, err := svc.db.Exec(
 		insertCarQuery,
-		hash,
 		mapBlockID,
 		year,
 		strings.TrimSpace(make),

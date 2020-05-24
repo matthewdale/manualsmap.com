@@ -105,20 +105,6 @@ var postCarsRequestSchema = map[string]interface{}{
 	"$schema": "http://json-schema.org/draft-07/schema#",
 	"type":    "object",
 	"properties": map[string]interface{}{
-		"licenseState": map[string]interface{}{
-			"type": "string",
-			"enum": []string{
-				"AL", "AK", "AZ", "ZR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL",
-				"IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT",
-				"NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI",
-				"SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "DC", "WV", "WI", "WY",
-			},
-		},
-		"licensePlate": map[string]interface{}{
-			"type":      "string",
-			"minLength": 3,
-			"maxLength": 20,
-		},
 		"year": map[string]interface{}{
 			"type":    "number",
 			"minimum": 1900,
@@ -161,8 +147,6 @@ var postCarsRequestSchema = map[string]interface{}{
 		},
 	},
 	"required": []string{
-		"licenseState",
-		"licensePlate",
 		"year",
 		"make",
 		"model",
@@ -188,8 +172,6 @@ type postCarsRequest struct {
 	Model              string          `json:"model"`
 	Trim               string          `json:"trim"`
 	Color              string          `json:"color"`
-	LicenseState       string          `json:"licenseState"`
-	LicensePlate       string          `json:"licensePlate"`
 	Latitude           decimal.Decimal `json:"latitude"`
 	Longitude          decimal.Decimal `json:"longitude"`
 	Recaptcha          string          `json:"recaptcha"`
@@ -235,8 +217,6 @@ func postCarsEndpoint(persistence services.Persistence) endpoint.Endpoint {
 			}
 		}
 		err = persistence.InsertCar(
-			r.LicenseState,
-			r.LicensePlate,
 			block.ID,
 			r.Year,
 			r.Make,

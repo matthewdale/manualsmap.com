@@ -15,7 +15,7 @@ CREATE TABLE images (
 );
 
 CREATE TABLE cars (
-    license_hash TEXT PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     map_block_id INTEGER NOT NULL,
     year INTEGER NOT NULL,
     make TEXT NOT NULL,
