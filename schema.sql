@@ -18,7 +18,7 @@ CREATE TABLE cars (
     license_hash TEXT PRIMARY KEY,
     map_block_id INTEGER NOT NULL,
     year INTEGER NOT NULL,
-    brand TEXT NOT NULL,
+    make TEXT NOT NULL,
     model TEXT NOT NULL,
     trim TEXT NOT NULL,
     color TEXT NOT NULL,

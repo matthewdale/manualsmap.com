@@ -160,11 +160,10 @@ type Car struct {
 
 // TODO: Fetch additional columns, order by created descending,
 // and paginate.
-// TODO: Rename "brand" to "make".
 const getCarsQuery = `
 SELECT
 	c.year,
-	c.brand,
+	c.make,
 	c.model,
 	c.trim,
 	c.color,
@@ -228,7 +227,7 @@ INSERT INTO cars(
 	license_hash,
 	map_block_id,
 	year,
-	brand,
+	make,
 	model,
 	trim,
 	color,
