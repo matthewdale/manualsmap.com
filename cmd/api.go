@@ -2,7 +2,7 @@ package main
 
 import (
 	"database/sql"
-	"io/ioutil"
+	"encoding/base64"
 	"log"
 	"net/http"
 
@@ -24,10 +24,10 @@ var opts struct {
 	Addr string `kong:"name='addr',default=':8080',help='the address to listen on'"`
 
 	// Mapkit JS configuration.
-	AppleTeamID  string `kong:"required,name='apple-team-id',help='Apple developer team ID'"`
-	MapkitKeyID  string `kong:"required,name='mapkit-key-id',help='Apple Mapkit key ID'"`
-	MapkitSecret string `kong:"required,name='mapkit-secret',help='path to the Apple Mapkit P8/PEM secret file'"`
-	MapkitOrigin string `kong:"name='mapkit-origin',help='Apple Mapkit JWT origin domain'"`
+	AppleTeamID     string `kong:"required,name='apple-team-id',help='Apple developer team ID'"`
+	MapkitKeyID     string `kong:"required,name='mapkit-key-id',help='Apple Mapkit key ID'"`
+	MapkitSecretB64 string `kong:"required,name='mapkit-secret-b64',help='base64-encoded Apple Mapkit P8/PEM secret'"`
+	MapkitOrigin    string `kong:"name='mapkit-origin',help='Apple Mapkit JWT origin domain'"`
 
 	// reCAPTCHA API configuration.
 	RecaptchaSecret string `kong:"required,name='recaptcha-secret',help='reCAPTCHA API secret'"`
@@ -47,9 +47,9 @@ func main() {
 	kong.Parse(&opts, kong.UsageOnError())
 	recaptcha.Init(opts.RecaptchaSecret)
 
-	mapkitSecret, err := ioutil.ReadFile(opts.MapkitSecret)
+	mapkitSecret, err := base64.StdEncoding.DecodeString(opts.MapkitSecretB64)
 	if err != nil {
-		log.Fatal("Error reading secret key", err)
+		log.Fatal("Error decoding Mapkit secret", err)
 	}
 
 	appleMapkit, err := services.NewAppleMapkit(
